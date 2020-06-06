@@ -92,7 +92,11 @@ class GlassdoorScraper(object):
                 'Rating': self._getRating(reviewHTML),
                 'JobTitle': self._getJobTitle(reviewHTML),
                 'Location': self._getLocation(reviewHTML),
-                'RecomendationBar': self._getRecommendationBar(reviewHTML)
+                'RecomendationBar': self._getRecommendationBar(reviewHTML),
+                'MainText': self._getMainText(reviewHTML),
+                'Pros': self._getReviewBody(element='Pros'),
+                'Cons': self._getReviewBody(element='Pros'),
+                'Advice to Management': self._getReviewBody(element='Advice to Management'),
             }
         )
     def _getReviewHTML(self, review):
@@ -104,6 +108,7 @@ class GlassdoorScraper(object):
     def _getReviewTitle(self, reviewHTML):
         """
         Parse review title from review-HTML if filled.
+        :param reviewHTML:
         """
         try:
             return re.search('reviewLink">"(.+?)"</a>', reviewHTML).group(1)
@@ -113,6 +118,7 @@ class GlassdoorScraper(object):
     def _getTimestamp(self, reviewHTML):
         """
         Parse review timestamp from review-HTML if available.
+        :param reviewHTML:
         """
         try:
             return re.search('<time class="date subtle small" datetime="(.+?)">', reviewHTML).group(1)
@@ -122,6 +128,7 @@ class GlassdoorScraper(object):
     def _getRating(self, reviewHTML):
         """
         Parse review rating from review-HTML if available.
+        :param reviewHTML:
         """
         try:
             return re.search('<div class="v2__EIReviewsRatingsStylesV2__ratingNum v2__EIReviewsRatingsStylesV2__small">(.+?)</div>', reviewHTML).group(1)
@@ -131,6 +138,7 @@ class GlassdoorScraper(object):
     def _getJobTitle(self, reviewHTML):
         """
         Parse reviewer's job title from review-HTML if available.
+        :param reviewHTML:
         """
         try:
             return re.search('<span class="authorJobTitle middle reviewer">(.+?)</span>', reviewHTML).group(1)
@@ -140,6 +148,7 @@ class GlassdoorScraper(object):
     def _getLocation(self, reviewHTML):
         """
         Parse reviewr's job location from review-HTML if available.
+        :param reviewHTML:
         """
         try:
             return re.search('<span class="authorLocation">(.+?)</span>', reviewHTML).group(1)
@@ -148,14 +157,50 @@ class GlassdoorScraper(object):
 
     def _getRecommendationBar(self, reviewHTML):
         """
+        Parse recomendation bar containing items/attributes like ('positive outlook', 'approves of CEO') etc.
+        All the items are concatenated to a string by ' | '.
+        :param reviewHTML:
         """
         try:
             recomendationBarItems = re.findall('<div class="col-sm-4">(.+?)</div>', reviewHTML)
             return ' | '.join(re.search('<span>(.+?)</span>', item).group(1) for item in recomendationBarItems)
         except:
             return None
-    
 
+    def _getMainText(self, reviewHTML):
+        """
+        Parse review main text. This usually contains information about the relationship of the reviewer and company.
+        :param reviewHTML:
+        """
+        try:
+            return re.search('<p class="mainText mb-0">(.+?)</p>', reviewHTML).group(1)
+        except:
+            return None
+
+    def _getReviewBody(self, element):
+        """
+        Get individual elements of the review body
+        :param element:
+        """
+        assert element in ['Pros', 'Cons', 'Advice to Management'], "Element must be drawn from the list ['Pros', 'Cons', 'Advice to Management']"
+        try:
+            return self.parsedReviewBody[element]
+        except:
+            return None
+    
+    def _parseReviewBody(self, reviewHTML):
+        """
+        Parse review body containing 'Pros', 'Cons' and 'Advice to management element'   
+        :param reviewHTML:
+        """
+        _reviewHTML = re.sub('\r|\n', '', reviewHTML)
+        tabs = re.findall('<p class="strong mb-0 mt-xsm">(.+?)</p>', _reviewHTML)
+        tabsText=re.findall(
+            '<p class="mt-0 mb-xsm v2__EIReviewDetailsV2__bodyColor v2__EIReviewDetailsV2__lineHeightLarge v2__EIReviewDetailsV2__isExpanded ">(.+?)</p>',
+            _reviewHTML
+        )
+        self.parsedReviewBody = {tab: tabText for tab, tabText in zip(tabs, tabsText)}
+    
     def loginGoogle(self):
         """
         :param email:
@@ -243,7 +288,7 @@ class GlassdoorScraper(object):
     
 
 
-# application (still needs to be automated)
+# application (still needs to be automated in scrape module)
 scraper = GlassdoorScraper(path_chrome_driver, url, email)
 scraper.getURL()
 scraper.searchReviews(
@@ -258,7 +303,31 @@ scraper.driver.find_element_by_id('onetrust-accept-btn-handler').click()
 scraper._clickContinueReading()
 scraper.getReviews()
 
-for 
+
+
+
+
+reviews = scraper.reviews
+reviews.extend(scraper.driver.find_elements_by_xpath('//li[@class="noBorder empReview cf"]'))
+
+j=0
+review = reviews[j]
+reviewHTML = review.get_attribute('outerHTML')
+reviewHTML = re.sub('\r|\n', '', reviewHTML)
+tab=re.findall('<p class="strong mb-0 mt-xsm">(.+?)</p>', reviewHTML)
+tab
+tabText=re.findall(
+    '<p class="mt-0 mb-xsm v2__EIReviewDetailsV2__bodyColor v2__EIReviewDetailsV2__lineHeightLarge v2__EIReviewDetailsV2__isExpanded ">(.+?)</p>',
+    reviewHTML
+)
+tabText
+
+
+
+
+
+reviewText = scraper.driver.find_elements_by_xpath('//li[@class="noBorder empReview cf"]')[0].get_attribute('outerHTML')
+reviewText
 
 reviewText = scraper.reviews[2].get_attribute('innerHTML')
 tab=re.findall('<p class="strong mb-0 mt-xsm">(.+?)</p>', reviewText)
