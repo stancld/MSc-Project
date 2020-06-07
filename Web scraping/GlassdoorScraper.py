@@ -23,8 +23,13 @@ from selenium.webdriver.common.keys import Keys
 class GlassdoorScraper(object):
     """
     """
+    #####################
+    ### MAGIC METHODS ###
+    #####################
+
     def __init__(self, path_chrome_driver, url, email):
         """
+        Instantiate method.
         :param path_chrome_drive:
         :param url:
         :param email:
@@ -42,18 +47,35 @@ class GlassdoorScraper(object):
         self.url = url
         self.email = email
 
+    ######################
+    ### PUBLIC METHODS ###
+    ## major func first ##
+    # alphabetical order #
+    ######################
+
     def scrape(self, company_name, location, limit = float(np.inf)):
         """
         MAIN FUNCTION (tba)
+        :param company_name:
+        :param location:
+        :param limit:
+        """
+        self.getOnReviewsPage(company_name, location)
+        while page <= limit:
+            page+=1
+
+    def getOnReviewsPage(self, company_name, location):
+        """
+        Function that get users at on the first page of reviews for a given company.
+        :param company_name:
+        :param location:
         """
         self.getURL()
-        time.sleep(1)
         self.searchReviews(company_name, location)
+        self._clickReviewsButton()
         time.sleep(1)
-        self.clickReviewsButton()
-        time.sleep(1)
-        if self.loginRequired():
-            self.loginGoogle()
+        if self._loginRequired():
+            self._loginGoogle()
 
         
     def getURL(self):
@@ -61,6 +83,16 @@ class GlassdoorScraper(object):
         Get on the Glassdoor review main page.
         """
         self.driver.get(self.url)
+        time.sleep(1)
+    
+    def getReviews(self):
+        """
+        A function returning a list of WebElements corresponding to individual 
+        reviews displayed on a given page.
+        There are two classes of empReview hence must be collected in two steps.
+        """
+        self.reviews = self.driver.find_elements_by_xpath('//li[@class="empReview cf"]')
+        self.reviews.extend(self.driver.find_elements_by_xpath('//li[@class="noBorder empReview cf"]'))    
 
     def searchReviews(self, company_name, location):
         """
@@ -71,122 +103,220 @@ class GlassdoorScraper(object):
         self._fillLocation(location)
         self._clickSearchButton()
         self.page = 1
-
-    def getReviews(self):
-        """
-        A function returning a list of WebElements corresponding to individual 
-        reviews displayed on a given page.
-        There are two classes of empReview hence must be collected in two steps.
-        """
-        self.reviews = self.driver.find_elements_by_xpath('//li[@class="empReview cf"]')
-        self.reviews.extend(self.driver.find_elements_by_xpath('//li[@class="noBorder empReview cf"]'))    
+        time.sleep(1)
     
-    def parseReview(self, reviewHTML):
+    def parseReview(self):
         """
         :param reviewHTML:
         """
         return pd.Series(
             {
-                'ReviewTitle': self._getReviewTitle(reviewHTML),
-                'Timestamp': self._getTimestamp(reviewHTML),
-                'Rating': self._getRating(reviewHTML),
-                'JobTitle': self._getJobTitle(reviewHTML),
-                'Location': self._getLocation(reviewHTML),
-                'RecomendationBar': self._getRecommendationBar(reviewHTML),
-                'MainText': self._getMainText(reviewHTML),
+                'ReviewTitle': self._getReviewTitle(),
+                'Timestamp': self._getTimestamp(),
+                'Rating': self._getRating(),
+                'JobTitle': self._getJobTitle(),
+                'Location': self._getLocation(),
+                'RecomendationBar': self._getRecommendationBar(),
+                'MainText': self._getMainText(),
                 'Pros': self._getReviewBody(element='Pros'),
-                'Cons': self._getReviewBody(element='Pros'),
+                'Cons': self._getReviewBody(element='Cons'),
                 'Advice to Management': self._getReviewBody(element='Advice to Management'),
             }
         )
-    def _getReviewHTML(self, review):
-        """
-        :param review:
-        """
-        return review.get_attribute('outerHTML')
 
-    def _getReviewTitle(self, reviewHTML):
+    def acceptCookies(self):
         """
-        Parse review title from review-HTML if filled.
-        :param reviewHTML:
+        Accept cookies consent if displayed.
         """
         try:
-            return re.search('reviewLink">"(.+?)"</a>', reviewHTML).group(1)
+            self.driver.find_elements_by_id('onetrust-accept-btn-handler').click()
         except:
-            return None
+            print('No cookies consent is required to accept.')
     
-    def _getTimestamp(self, reviewHTML):
-        """
-        Parse review timestamp from review-HTML if available.
-        :param reviewHTML:
-        """
-        try:
-            return re.search('<time class="date subtle small" datetime="(.+?)">', reviewHTML).group(1)
-        except:
-            return None
+    #######################
+    ### PRIVATE METHODS ###
+    ## alphabetical order #
+    #######################
 
-    def _getRating(self, reviewHTML):
+    def _clickContinueReading(self):
         """
-        Parse review rating from review-HTML if available.
-        :param reviewHTML:
+        Click "Continue reading" button to unroll the whole version of reviews.
         """
-        try:
-            return re.search('<div class="v2__EIReviewsRatingsStylesV2__ratingNum v2__EIReviewsRatingsStylesV2__small">(.+?)</div>', reviewHTML).group(1)
-        except:
-            return None
+        continue_reading_list = self.driver.find_elements_by_xpath(
+            '//div[@class="v2__EIReviewDetailsV2__continueReading v2__EIReviewDetailsV2__clickable"]'
+        )
+        for continue_reading in continue_reading_list:
+            continue_reading.click()
+            time.sleep(5)
     
-    def _getJobTitle(self, reviewHTML):
+    def _clickReviewsButton(self):
+        """
+        Click "Reviews" button on a company's profile to dislay the first review page.
+        """
+        self.driver.find_element_by_xpath('//*[@id="EIProductHeaders"]/div/a[1]').click()
+
+    def _clickSearchButton(self):
+        """
+        Click "Search" button to trigger search for a company's profile.
+        """
+        self.driver.find_element_by_class_name("gd-btn-mkt").click()
+
+    def _fillCompanyName(self, company_name):
+        """
+        Fill a company name in a search field on the title page.
+        :param company_name: type=str
+        """
+        assert type(company_name) == str, 'Param company_name must be a type of str.'
+        self.driver.find_element_by_class_name("keyword").clear()
+        self.driver.find_element_by_class_name("keyword").send_keys(company_name)
+
+    def _fillEmailAndClick(self, email):
+        """
+        Fill a user e-mail to log in a Glassdoor account.
+        :param email: type=str
+        """
+        assert type(email) == str, 'Param email must be a type of str.'
+        self.driver.find_element_by_xpath('//*[@id="identifierId"]').clear()
+        self.driver.find_element_by_xpath('//*[@id="identifierId"]').send_keys(email)
+        self.driver.find_element_by_xpath('//*[@id="identifierNext"]/span/span').click()
+
+    def _fillLocation(self, location):
+        """
+        Fill a company name in a search field on the title page.
+        :param location: type=str
+        """
+        assert type(location) == str, 'Param locaation must be a type of str.'
+        self.driver.find_element_by_class_name("loc").clear()
+        self.driver.find_element_by_class_name("loc").send_keys(location)
+
+    def _fillPasswordAndClick(self):
+        """
+        Fill a user password to log in a Glassdoor account. Password is asked to be typed.
+        """
+        self.driver.find_element_by_xpath('//*[@id="password"]/div[1]/div/div[1]/input').clear()
+        self.driver.find_element_by_xpath('//*[@id="password"]/div[1]/div/div[1]/input').send_keys(input())
+        self.driver.find_element_by_xpath('//*[@id="passwordNext"]/span/span').click()
+
+    def _getJobTitle(self):
         """
         Parse reviewer's job title from review-HTML if available.
-        :param reviewHTML:
+        :param reviewHTML: HTML code of a review page returned by a function _getReviewHTML, type=str
         """
         try:
-            return re.search('<span class="authorJobTitle middle reviewer">(.+?)</span>', reviewHTML).group(1)
+            return re.search('<span class="authorJobTitle middle reviewer">(.+?)</span>', self.reviewHTML).group(1)
         except:
             return None
-
-    def _getLocation(self, reviewHTML):
+    
+    def _getLocation(self):
         """
         Parse reviewr's job location from review-HTML if available.
-        :param reviewHTML:
         """
         try:
-            return re.search('<span class="authorLocation">(.+?)</span>', reviewHTML).group(1)
+            return re.search('<span class="authorLocation">(.+?)</span>', self.reviewHTML).group(1)
         except:
             return None
 
-    def _getRecommendationBar(self, reviewHTML):
+    def _getMainText(self):
+        """
+        Parse review main text. This usually contains information about the relationship of the reviewer and company.
+        """
+        try:
+            return re.search('<p class="mainText mb-0">(.+?)</p>', self.reviewHTML).group(1)
+        except:
+            return None
+    
+    def _getRating(self):
+        """
+        Parse review rating from review-HTML if available.
+        """
+        try:
+            return re.search('<div class="v2__EIReviewsRatingsStylesV2__ratingNum v2__EIReviewsRatingsStylesV2__small">(.+?)</div>', self.reviewHTML).group(1)
+        except:
+            return None
+
+    def _getRecommendationBar(self):
         """
         Parse recomendation bar containing items/attributes like ('positive outlook', 'approves of CEO') etc.
         All the items are concatenated to a string by ' | '.
-        :param reviewHTML:
         """
         try:
-            recomendationBarItems = re.findall('<div class="col-sm-4">(.+?)</div>', reviewHTML)
+            recomendationBarItems = re.findall('<div class="col-sm-4">(.+?)</div>', self.reviewHTML)
             return ' | '.join(re.search('<span>(.+?)</span>', item).group(1) for item in recomendationBarItems)
         except:
             return None
-
-    def _getMainText(self, reviewHTML):
-        """
-        Parse review main text. This usually contains information about the relationship of the reviewer and company.
-        :param reviewHTML:
-        """
-        try:
-            return re.search('<p class="mainText mb-0">(.+?)</p>', reviewHTML).group(1)
-        except:
-            return None
-
+    
     def _getReviewBody(self, element):
         """
         Get individual elements of the review body
-        :param element:
+        :param element: A string indicating a component of a review body
+            select from: ['Pros', 'Cons', 'Advice to Management'], type=str
         """
-        assert element in ['Pros', 'Cons', 'Advice to Management'], "Element must be drawn from the list ['Pros', 'Cons', 'Advice to Management']"
+        assert type(element) == str, 'Param element must be a type of str.'
+        assert element in ['Pros', 'Cons', 'Advice to Management'], "Element must be drawn from the list ['Pros', 'Cons', 'Advice to Management']."
         try:
             return self.parsedReviewBody[element]
         except:
             return None
+    
+    def _getReviewHTML(self, review):
+        """
+        Get attribute 'outerHTML' from a WebElement corresponding to a single review.
+        :param review: WebElement
+        """
+        self.reviewHTML = review.get_attribute('outerHTML')
+
+    def _getReviewTitle(self):
+        """
+        Parse review title from review-HTML if filled.
+        """
+        try:
+            return re.search('reviewLink">"(.+?)"</a>', self.reviewHTML).group(1)
+        except:
+            return None
+    
+    def _getTimestamp(self):
+        """
+        Parse review timestamp from review-HTML if available.
+        """
+        try:
+            return re.search('<time class="date subtle small" datetime="(.+?)">', self.reviewHTML).group(1)
+        except:
+            return None
+
+    def _isNextPageAvailable(self):
+        """
+        Needs to be finished.
+        The ultimate functionality is to find out whether the next page
+        contains any review. If not, scraping should be terminated. 
+        """
+        if '_P' in self.driver.current_url:
+            next_url = re.sub('_P(.+?).htm', f'_P{(self.page)+1}.htm', self.driver.current_url)
+        else:
+            next_url = re.sub('.htm', '_P2.htm', self.driver.current_url)
+    
+    def _loginGoogle(self):
+        """
+        A module capable to log in to user's Google account connected with to a Glassdoor account.
+        All the operations from clicking on the button, switching windows to filling user's details
+        are handled within this single function.
+        """
+        self.driver.find_element_by_xpath('//*[@id="HardsellOverlay"]/div/div/div/div/div/div/div/div[1]/div[1]/div/div[2]/button').click()
+        time.sleep(0.5)
+        self.driver.switch_to.window(self.driver.window_handles[1])
+        self._fillEmailAndClick(self.email)
+        time.sleep(0.5)
+        try:
+            print('Type your password.')
+            self._fillPasswordAndClick()
+        except:
+            print('Mobile verification is required.')
+        self.driver.switch_to.window(self.driver.window_handles[0])
+
+    def _loginRequired(self):
+        """
+        A function that is responsible for detecting whether a user is required to log in its Glassdoor account.
+        """
+        return len(self.driver.find_elements_by_xpath('//*[@id="HardsellOverlay"]/div/div/div/div/div/div/div/div[1]/div[1]/div/div[2]/button')) > 0
     
     def _parseReviewBody(self, reviewHTML):
         """
@@ -200,90 +330,7 @@ class GlassdoorScraper(object):
             _reviewHTML
         )
         self.parsedReviewBody = {tab: tabText for tab, tabText in zip(tabs, tabsText)}
-    
-    def loginGoogle(self):
-        """
-        :param email:
-        """
-        self.driver.find_element_by_xpath('//*[@id="HardsellOverlay"]/div/div/div/div/div/div/div/div[1]/div[1]/div/div[2]/button').click()
-        time.sleep(0.5)
-        self.driver.switch_to.window(self.driver.window_handles[1])
-        self._fillEmail(self.email)
-        time.sleep(0.5)
-        try:
-            print('Type your password.')
-            self._fillPassword()
-        except:
-            pass
-        self.driver.switch_to.window(self.driver.window_handles[0])
-    
-    def _fillCompanyName(self, company_name):
-        """
-        :param company_name:
-        """
-        self.driver.find_element_by_class_name("keyword").clear()
-        self.driver.find_element_by_class_name("keyword").send_keys(company_name)
-
-    def _fillLocation(self, location):
-        """
-        :param location:
-        """
-        self.driver.find_element_by_class_name("loc").clear()
-        self.driver.find_element_by_class_name("loc").send_keys(location)
-    
-    def _clickSearchButton(self):
-        """
-        """
-        self.driver.find_element_by_class_name("gd-btn-mkt").click()
-
-    def clickReviewsButton(self):
-        """
-        """
-        self.driver.find_element_by_xpath('//*[@id="EIProductHeaders"]/div/a[1]').click()
-
-    def _clickContinueReading(self):
-        """
-        """
-        continue_reading_list = self.driver.find_elements_by_xpath(
-            '//div[@class="v2__EIReviewDetailsV2__continueReading v2__EIReviewDetailsV2__clickable"]'
-        )
-        for continue_reading in continue_reading_list:
-            continue_reading.click()
-            time.sleep(5)
-
-    def loginRequired(self):
-        """
-        """
-        return len(self.driver.find_elements_by_xpath('//*[@id="HardsellOverlay"]/div/div/div/div/div/div/div/div[1]/div[1]/div/div[2]/button')) > 0
-    
-    def _fillEmail(self, email):
-        """
-        :param email:
-        """
-        self.driver.find_element_by_xpath('//*[@id="identifierId"]').clear()
-        self.driver.find_element_by_xpath('//*[@id="identifierId"]').send_keys(email)
-        self.driver.find_element_by_xpath('//*[@id="identifierNext"]/span/span').click()
-    
-    def _fillPassword(self):
-        """
-        """
-        self.driver.find_element_by_xpath('//*[@id="password"]/div[1]/div/div[1]/input').clear()
-        self.driver.find_element_by_xpath('//*[@id="password"]/div[1]/div/div[1]/input').send_keys(input())
-        self.driver.find_element_by_xpath('//*[@id="passwordNext"]/span/span').click()
-
-    def _nextPageAvailable(self):
-        """
-        Needs to be finished.
-        The ultimate functionality is to find out whether the next page
-        contains any review. If not, scraping should be terminated. 
-        """
-        if '_P' in self.driver.current_url:
-            next_url = re.sub('_P(.+?).htm', f'_P{(self.page)+1}.htm', self.driver.current_url)
-        else:
-            next_url = re.sub('.htm', '_P2.htm', self.driver.current_url)
-    
-    def acceptCookies(self):
-        self.driver.find_elements_by_id('onetrust-accept-btn-handler').click()
+       
 
     
 
@@ -296,7 +343,7 @@ scraper.searchReviews(
     location='London'
 )
 time.sleep(1.0)
-scraper.clickReviewsButton()
+scraper._clickReviewsButton()
 scraper.loginGoogle()
 scraper._clickContinueReading()
 scraper.driver.find_element_by_id('onetrust-accept-btn-handler').click()
