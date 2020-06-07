@@ -72,7 +72,7 @@ class GlassdoorScraper(object):
         :param location:
         :param limit:
         """
-        # self.getOnReviewsPage(company_name, location) # this stage does not work properly
+        # self.getOnReviewsPage(company_name, location) # this stage does not work properly; will be uncommented once login to Glassdoor to be unbugged
         # self.acceptCookies()
         while (self.page <= limit) & (self._isNextPageAvailable()):
             self._clickContinueReading()
@@ -377,10 +377,10 @@ class GlassdoorScraper(object):
 
 # application (still needs to be automated in scrape module)
 scraper = GlassdoorScraper(path_chrome_driver, email)
-scraper.getOnReviewsPage(
+scraper.getOnReviewsPage( 
     company_name='Intel Corporation',
     location='London'    
-) # There are still some troubles with log in
+) # There are still some troubles with log in; this should be a part of scrape function
 scraper._loginGoogle()
 
 scraper.acceptCookies()
