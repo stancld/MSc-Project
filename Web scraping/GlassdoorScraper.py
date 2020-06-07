@@ -1,12 +1,12 @@
 # set hyperparameters
-path_chrome_driver = "/mnt/c/Data/UCL/@MSC Project/Web scraping/chromedriver.exe"
-url = "https://www.glassdoor.com/Reviews/index.htm"
+path_chrome_driver = '/mnt/c/Data/UCL/@MSC Project/Web scraping/chromedriver.exe'
+url = 'https://www.glassdoor.com/Reviews/index.htm'
 
 
 # set some user parameters
-email = "daniel.stancl@gmail.com"
-company_name = "Intel Corporation"
-location = "London"
+email = 'daniel.stancl@gmail.com'
+company_name = 'Intel Corporation'
+location = 'London'
 sleep_time = 0.5
 
 # import libraries
@@ -27,25 +27,37 @@ class GlassdoorScraper(object):
     ### MAGIC METHODS ###
     #####################
 
-    def __init__(self, path_chrome_driver, url, email):
+    def __init__(self, path_chrome_driver, email,
+                url='https://www.glassdoor.com/Reviews/index.htm'):
         """
         Instantiate method.
-        :param path_chrome_drive:
+        :param path_chrome_drive: 
+        :param email: User email used for a log in to the Glassdoor account, type=str
         :param url:
-        :param email:
         """
-        options = webdriver.ChromeOptions()
-        # initialize the driver
         self.driver = webdriver.Chrome(
             executable_path=path_chrome_driver,
-            options=options
+            options=webdriver.ChromeOptions()
         )
-        # set the driver's convenient    position to look at
         self.driver.set_window_size(960, 1080)
         self.driver.set_window_position(0,0)
+        
         # store url, email
         self.url = url
         self.email = email
+
+        # Instantiate empty dataframe for storing reviews
+        self.data = pd.DataFrame(
+            columns = [
+                'ReviewTitle', 'Timestamp', 'Rating',
+                'JobTitle', 'Location',' RecommendationBar',
+                'MainText', 'Pros', 'Cons',
+                'AdviceToManagement'
+            ]
+        )
+
+        # sanity checks
+        assert type(email)==str, 'Param email must be a type of str'
 
     ######################
     ### PUBLIC METHODS ###
@@ -56,33 +68,41 @@ class GlassdoorScraper(object):
     def scrape(self, company_name, location, limit = float(np.inf)):
         """
         MAIN FUNCTION (tba)
-        :param company_name:
+        :param company_name: type=str
         :param location:
         :param limit:
         """
-        self.getOnReviewsPage(company_name, location)
-        while page <= limit:
-            page+=1
+        # self.getOnReviewsPage(company_name, location) # this stage does not work properly
+        # self.acceptCookies()
+        while (self.page <= limit) & (self._isNextPageAvailable()):
+            self._clickContinueReading()
+            self.getReviews()           
+            self.data = self.data.append(
+                pd.DataFrame(self.parseReview(review) for review in self.reviews)
+            )
+            self._goNextPage()
+            self.page+=1
+            time.sleep(2)
 
     def getOnReviewsPage(self, company_name, location):
         """
         Function that get users at on the first page of reviews for a given company.
-        :param company_name:
+        :param company_name: type=str
         :param location:
         """
-        self.getURL()
+        self.getURL(self.url)
         self.searchReviews(company_name, location)
         self._clickReviewsButton()
-        time.sleep(1)
+        time.sleep(2)
         if self._loginRequired():
             self._loginGoogle()
-
+        time.sleep(2)
         
-    def getURL(self):
+    def getURL(self, url):
         """
-        Get on the Glassdoor review main page.
+        Get on URL and then sleep for a while to make sure web content to be loaded properly.
         """
-        self.driver.get(self.url)
+        self.driver.get(url)
         time.sleep(1)
     
     def getReviews(self):
@@ -90,14 +110,18 @@ class GlassdoorScraper(object):
         A function returning a list of WebElements corresponding to individual 
         reviews displayed on a given page.
         There are two classes of empReview hence must be collected in two steps.
+        *It might be moved to private functions*
         """
         self.reviews = self.driver.find_elements_by_xpath('//li[@class="empReview cf"]')
         self.reviews.extend(self.driver.find_elements_by_xpath('//li[@class="noBorder empReview cf"]'))    
 
     def searchReviews(self, company_name, location):
         """
-        :param company_name:
-        :param location:
+        A function that is responsible for searching company's reviews
+        once a user is on a main review page.
+        *It might be moved to private functions*
+        :param company_name: type=str
+        :param location: type=str
         """
         self._fillCompanyName(company_name)
         self._fillLocation(location)
@@ -105,10 +129,17 @@ class GlassdoorScraper(object):
         self.page = 1
         time.sleep(1)
     
-    def parseReview(self):
+    def parseReview(self, review):
         """
-        :param reviewHTML:
+        Parse a whole single review into individual elements listed below:
+            'ReviewTitle', 'Timestamp', 'Rating', 'JobTitle', 'Location',
+            'RecommendationBar', 'MainText', 'Pros', 'Cons', 'Advice 
+            to Managemet'
+        :param review: WebElement
         """
+        self._getReviewHTML(review) # create self.reviewHTML object
+        self._parseReviewBody() # necessary to obtain 'Pros', 'Cons' and 'Advice to Management'
+        
         return pd.Series(
             {
                 'ReviewTitle': self._getReviewTitle(),
@@ -116,11 +147,11 @@ class GlassdoorScraper(object):
                 'Rating': self._getRating(),
                 'JobTitle': self._getJobTitle(),
                 'Location': self._getLocation(),
-                'RecomendationBar': self._getRecommendationBar(),
+                'RecommendationBar': self._getRecommendationBar(),
                 'MainText': self._getMainText(),
                 'Pros': self._getReviewBody(element='Pros'),
                 'Cons': self._getReviewBody(element='Cons'),
-                'Advice to Management': self._getReviewBody(element='Advice to Management'),
+                'AdviceToManagement': self._getReviewBody(element='Advice to Management')
             }
         )
 
@@ -129,7 +160,7 @@ class GlassdoorScraper(object):
         Accept cookies consent if displayed.
         """
         try:
-            self.driver.find_elements_by_id('onetrust-accept-btn-handler').click()
+            self.driver.find_element_by_id('onetrust-accept-btn-handler').click()
         except:
             print('No cookies consent is required to accept.')
     
@@ -281,7 +312,16 @@ class GlassdoorScraper(object):
         try:
             return re.search('<time class="date subtle small" datetime="(.+?)">', self.reviewHTML).group(1)
         except:
-            return None
+            return 'Featured Review'
+    
+    def _goNextPage(self):
+        """
+        """
+        if '_P' in self.driver.current_url:
+            next_url = re.sub('_P(.+?).htm', f'_P{(self.page)+1}.htm', self.driver.current_url)
+        else:
+            next_url = re.sub('.htm', '_P2.htm', self.driver.current_url)
+        self.getURL(next_url)
 
     def _isNextPageAvailable(self):
         """
@@ -289,10 +329,8 @@ class GlassdoorScraper(object):
         The ultimate functionality is to find out whether the next page
         contains any review. If not, scraping should be terminated. 
         """
-        if '_P' in self.driver.current_url:
-            next_url = re.sub('_P(.+?).htm', f'_P{(self.page)+1}.htm', self.driver.current_url)
-        else:
-            next_url = re.sub('.htm', '_P2.htm', self.driver.current_url)
+        self.getReviews()
+        return len(self.reviews) > 0
     
     def _loginGoogle(self):
         """
@@ -318,12 +356,12 @@ class GlassdoorScraper(object):
         """
         return len(self.driver.find_elements_by_xpath('//*[@id="HardsellOverlay"]/div/div/div/div/div/div/div/div[1]/div[1]/div/div[2]/button')) > 0
     
-    def _parseReviewBody(self, reviewHTML):
+    def _parseReviewBody(self):
         """
         Parse review body containing 'Pros', 'Cons' and 'Advice to management element'   
         :param reviewHTML:
         """
-        _reviewHTML = re.sub('\r|\n', '', reviewHTML)
+        _reviewHTML = re.sub('\r|\n', '', self.reviewHTML)
         tabs = re.findall('<p class="strong mb-0 mt-xsm">(.+?)</p>', _reviewHTML)
         tabsText=re.findall(
             '<p class="mt-0 mb-xsm v2__EIReviewDetailsV2__bodyColor v2__EIReviewDetailsV2__lineHeightLarge v2__EIReviewDetailsV2__isExpanded ">(.+?)</p>',
@@ -332,59 +370,29 @@ class GlassdoorScraper(object):
         self.parsedReviewBody = {tab: tabText for tab, tabText in zip(tabs, tabsText)}
        
 
-    
 
+#######################
+##### APPLICATION #####
+#######################
 
 # application (still needs to be automated in scrape module)
-scraper = GlassdoorScraper(path_chrome_driver, url, email)
-scraper.getURL()
-scraper.searchReviews(
+scraper = GlassdoorScraper(path_chrome_driver, email)
+scraper.getOnReviewsPage(
     company_name='Intel Corporation',
-    location='London'
+    location='London'    
+) # There are still some troubles with log in
+scraper._loginGoogle()
+
+scraper.acceptCookies()
+#scraper._clickContinueReading()
+
+scraper.scrape(
+    company_name='Intel Corporation',
+    location='London',
+    limit=5
 )
-time.sleep(1.0)
-scraper._clickReviewsButton()
-scraper.loginGoogle()
-scraper._clickContinueReading()
-scraper.driver.find_element_by_id('onetrust-accept-btn-handler').click()
-scraper._clickContinueReading()
-scraper.getReviews()
 
-
-
-
-
-reviews = scraper.reviews
-reviews.extend(scraper.driver.find_elements_by_xpath('//li[@class="noBorder empReview cf"]'))
-
-j=0
-review = reviews[j]
-reviewHTML = review.get_attribute('outerHTML')
-reviewHTML = re.sub('\r|\n', '', reviewHTML)
-tab=re.findall('<p class="strong mb-0 mt-xsm">(.+?)</p>', reviewHTML)
-tab
-tabText=re.findall(
-    '<p class="mt-0 mb-xsm v2__EIReviewDetailsV2__bodyColor v2__EIReviewDetailsV2__lineHeightLarge v2__EIReviewDetailsV2__isExpanded ">(.+?)</p>',
-    reviewHTML
+scraper.data.shape
+scraper.data.to_excel(
+    '/mnt/c/Data/IntelReviews.xlsx'
 )
-tabText
-
-
-
-
-
-reviewText = scraper.driver.find_elements_by_xpath('//li[@class="noBorder empReview cf"]')[0].get_attribute('outerHTML')
-reviewText
-
-reviewText = scraper.reviews[2].get_attribute('innerHTML')
-tab=re.findall('<p class="strong mb-0 mt-xsm">(.+?)</p>', reviewText)
-tab
-tabText=re.findall(
-    '<p class="mt-0 mb-xsm v2__EIReviewDetailsV2__bodyColor v2__EIReviewDetailsV2__lineHeightLarge v2__EIReviewDetailsV2__isExpanded ">(.+?)</p>',
-    reviewText
-)
-tabText
-print(len(tabText))
-
-
-len(scraper.reviews)
