@@ -93,7 +93,7 @@ class GlassdoorScraper(object):
         self.getURL(self.url)
         self.searchReviews(company_name, location)
         self._clickReviewsButton()
-        time.sleep(2)
+        time.sleep(5)
         if self._loginRequired():
             self._loginGoogle()
         time.sleep(2)
@@ -173,11 +173,8 @@ class GlassdoorScraper(object):
         """
         Click "Continue reading" button to unroll the whole version of reviews.
         """
-        continue_reading_list = self.driver.find_elements_by_xpath(
-            '//div[@class="v2__EIReviewDetailsV2__continueReading v2__EIReviewDetailsV2__clickable"]'
-        )
-        for continue_reading in continue_reading_list:
-            continue_reading.click()
+        while len(self._getContinueReadingList()) > 0:
+            self._getContinueReadingList()[0].click()
             time.sleep(5)
     
     def _clickReviewsButton(self):
@@ -228,6 +225,14 @@ class GlassdoorScraper(object):
         self.driver.find_element_by_xpath('//*[@id="password"]/div[1]/div/div[1]/input').send_keys(input())
         self.driver.find_element_by_xpath('//*[@id="passwordNext"]/span/span').click()
 
+    def _getContinueReadingList(self):
+        """
+        Get the most recent version of 'Continue reading' buttons on reviews page.
+        """
+        return self.driver.find_elements_by_xpath(
+            '//div[@class="v2__EIReviewDetailsV2__continueReading v2__EIReviewDetailsV2__clickable"]'
+        )
+    
     def _getJobTitle(self):
         """
         Parse reviewer's job title from review-HTML if available.
@@ -368,7 +373,7 @@ class GlassdoorScraper(object):
             _reviewHTML
         )
         self.parsedReviewBody = {tab: tabText for tab, tabText in zip(tabs, tabsText)}
-       
+
 
 
 #######################
@@ -376,9 +381,11 @@ class GlassdoorScraper(object):
 #######################
 
 # application (still needs to be automated in scrape module)
+company_name = '3M Company'
+
 scraper = GlassdoorScraper(path_chrome_driver, email)
 scraper.getOnReviewsPage( 
-    company_name='Intel Corporation',
+    company_name=company_name,
     location='London'    
 ) # There are still some troubles with log in; this should be a part of scrape function
 scraper._loginGoogle()
@@ -387,12 +394,12 @@ scraper.acceptCookies()
 #scraper._clickContinueReading()
 
 scraper.scrape(
-    company_name='Intel Corporation',
+    company_name=company_name,
     location='London',
     limit=5
 )
 
-scraper.data.shape
+path = f'/mnt/c/Data/{company_name}.xlsx'
 scraper.data.to_excel(
-    '/mnt/c/Data/IntelReviews.xlsx'
+    path
 )
