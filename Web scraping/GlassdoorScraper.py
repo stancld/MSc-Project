@@ -115,6 +115,8 @@ class GlassdoorScraper(object):
         self.company_name = company_name
         self.getURL(self.url)
         self.searchReviews(company_name, location)
+        if self._isNotUniqueSearchResult():
+            self._selectFirstCompany()
         self._clickReviewsButton()
         time.sleep(5)
         if self._loginRequired():
@@ -375,6 +377,14 @@ class GlassdoorScraper(object):
         """
         self.getReviews()
         return len(self.reviews) > 0
+
+    def _isNotUniqueSearchResult(self):
+        """
+        It might happen a list of companies is returned when a company name is searched.
+        This is an identifier of such an occasion.
+        """
+        return len(self.driver.find_elements_by_id('SearchResults')) != 0
+
     
     def _loginGoogle(self):
         """
@@ -496,6 +506,19 @@ class GlassdoorScraper(object):
             self.timestamp = re.search('<time class="date subtle small" datetime="(.+?)">', self.reviewHTML).group(1)
         except:
             self.timestamp = 'Featured Review'
+    
+    def _selectFirstCompany(self):
+        """
+        If more companies are found under a given keyword, the first returned result is chosen by this function.
+        """
+        firstCompany = self.driver.find_elements_by_class_name('single-company-result')[0]
+        companyLink = re.search(
+            f'<h2><a href="(.+?)">{self.company_name}(.+?)</h2>',
+            firstCompany.get_attribute('outerHTML')).group(1)
+        link = 'https://www.glassdoor.com' + companyLink
+        print(link)
+        self.getURL(link)
+        time.sleep(1)
 
 
 
@@ -504,7 +527,7 @@ class GlassdoorScraper(object):
 #######################
 
 # application (still needs to be automated in scrape module)
-company_name = 'Intel Corporation'
+company_name = 'Amazon'
 
 scraper = GlassdoorScraper(path_chrome_driver, email)
 scraper.getOnReviewsPage( 
@@ -522,7 +545,11 @@ scraper.scrape(
 )
 
 
+
+
 path = f'/mnt/c/Data/{company_name}_reviews.xlsx'
 scraper.data.to_excel(
     path
 )
+
+scraper.driver.get('https://www.seznam.cz')
