@@ -50,12 +50,29 @@ class GlassdoorScraper(object):
         self.schema = [
             'ReviewTitle', 'Timestamp', 'Rating',
             'JobTitle', 'Location',' Recommendation',
-            'Outlook', 'OpinionOfCEO', 'MainText',
-            'Pros', 'Cons', 'AdviceToManagement'
+            'Outlook', 'OpinionOfCEO', 'Contract',
+            'ContractPeriod', 'Pros', 'Cons',
+            'AdviceToManagement'
         ]
         self.data = pd.DataFrame(
             columns = self.schema
         )
+
+        # a dictionary for transforming three-letter months into an integer
+        self.monthToInt = {
+            'Jan': 1,
+            'Feb': 2,
+            'Mar': 3,
+            'Apr': 4,
+            'May': 5,
+            'Jun': 6,
+            'Jul': 7,
+            'Aug': 8,
+            'Sep': 9,
+            'Oct': 10,
+            'Nov': 11,
+            'Dec': 12
+        }
 
         # sanity checks
         assert type(email)==str, 'Param email must be a type of str'
@@ -85,7 +102,7 @@ class GlassdoorScraper(object):
             self._goNextPage()
         
         # correct indexing
-        self.data = self.data.reset_index()
+        self.data = self.data.reset_index(drop=True)
 
 
     def acceptCookies(self):
@@ -152,8 +169,7 @@ class GlassdoorScraper(object):
         :param review: WebElement
         """
         self._getReviewHTML(review) # create self.reviewHTML object
-        self._parseRecommendationBar() # necessary to obtain attributes: 'Recommendation', 'Outlook', 'OpinionOfCEO'
-        self._parseReviewBody() # necessary to obtain attributes: 'Pros', 'Cons' and 'Advice to Management'
+        self._parseReviewElements()
         
         return pd.Series(
             {
@@ -166,7 +182,8 @@ class GlassdoorScraper(object):
                 'Recommendation': self._getRecommendationBar(element='Recommendation'),
                 'Outlook': self._getRecommendationBar(element='Outlook'),
                 'OpinionOfCEO': self._getRecommendationBar(element='OpinionOfCEO'),
-                'MainText': self._getMainText(),
+                'Contract': self._getContract(),
+                'ContractPeriod': self._getContractPeriod(),
                 'Pros': self._getReviewBody(element='Pros'),
                 'Cons': self._getReviewBody(element='Cons'),
                 'AdviceToManagement': self._getReviewBody(element='Advice to Management')
@@ -242,6 +259,24 @@ class GlassdoorScraper(object):
             '//div[@class="v2__EIReviewDetailsV2__continueReading v2__EIReviewDetailsV2__clickable"]'
         )
     
+    def _getContract(self):
+        """
+        Parse information whether a reviewer is/was a full-time/part-time employee.
+        """
+        try:
+            return [word for word in self.mainText.split() if 'time' in word][0]
+        except:
+            return None
+
+    def _getContractPeriod(self):
+        """
+        Parse information how long a reviewr was/has been working for a company.
+        """
+        try:
+            return re.search('for (.+)', self.mainText).group(1)
+        except:
+            return None
+    
     def _getJobTitle(self):
         """
         Parse reviewer's job title from review-HTML if available.
@@ -258,15 +293,6 @@ class GlassdoorScraper(object):
         """
         try:
             return re.search('<span class="authorLocation">(.+?)</span>', self.reviewHTML).group(1)
-        except:
-            return None
-
-    def _getMainText(self):
-        """
-        Parse review main text. This usually contains information about the relationship of the reviewer and company.
-        """
-        try:
-            return re.search('<p class="mainText mb-0">(.+?)</p>', self.reviewHTML).group(1)
         except:
             return None
     
@@ -370,6 +396,15 @@ class GlassdoorScraper(object):
         """
         return len(self.driver.find_elements_by_xpath('//*[@id="HardsellOverlay"]/div/div/div/div/div/div/div/div[1]/div[1]/div/div[2]/button')) > 0
     
+    def _parseMainText(self):
+        """
+        Parse review main text. This usually contains information about the relationship of the reviewer and company.
+        """
+        try:
+            self.mainText = re.search('<p class="mainText mb-0">(.+?)</p>', self.reviewHTML).group(1)
+        except:
+            self.mainText = str()
+    
     def _parseRecommendationBar(self):
         """
         A function that handles parsing the whole recommendation bar into a single elements
@@ -438,6 +473,17 @@ class GlassdoorScraper(object):
         )
         self.parsedReviewBody = {tab: tabText for tab, tabText in zip(tabs, tabsText)}
 
+    def _parseReviewElements(self):
+        """
+        There are multiple objects in a review which need to be parsed.
+        This function unites all the individual components together.
+        Usage of this function is appropraite as it enables someone to avoid
+        using one sub-fuction more than once (as this would be redundant).
+        """
+        self._parseRecommendationBar() # necessary to obtain attributes: 'Recommendation', 'Outlook', 'OpinionOfCEO'
+        self._parseReviewBody() # necessary to obtain attributes: 'Pros', 'Cons' and 'Advice to Management'
+        self._parseMainText() # this contains information on whether an employee is/was full-time/part-time and on a period of contract
+
 
 
 #######################
@@ -445,7 +491,7 @@ class GlassdoorScraper(object):
 #######################
 
 # application (still needs to be automated in scrape module)
-company_name = 'FedEx Corporation'
+company_name = 'Intel Corporation'
 
 scraper = GlassdoorScraper(path_chrome_driver, email)
 scraper.getOnReviewsPage( 
@@ -459,16 +505,11 @@ scraper.acceptCookies()
 scraper.scrape(
     company_name=company_name,
     location='London',
-    limit=1
+    limit=3
 )
-
 
 
 path = f'/mnt/c/Data/{company_name}_reviews.xlsx'
 scraper.data.to_excel(
     path
 )
-
-def hey(x):
-    x = 
-    return x[0]
