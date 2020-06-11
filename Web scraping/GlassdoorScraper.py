@@ -47,13 +47,14 @@ class GlassdoorScraper(object):
         self.email = email
 
         # Instantiate empty dataframe for storing reviews
+        self.schema = [
+            'ReviewTitle', 'Timestamp', 'Rating',
+            'JobTitle', 'Location',' Recommendation',
+            'Outlook', 'OpinionOfCEO', 'MainText',
+            'Pros', 'Cons', 'AdviceToManagement'
+        ]
         self.data = pd.DataFrame(
-            columns = [
-                'ReviewTitle', 'Timestamp', 'Rating',
-                'JobTitle', 'Location',' RecommendationBar',
-                'MainText', 'Pros', 'Cons',
-                'AdviceToManagement'
-            ]
+            columns = self.schema
         )
 
         # sanity checks
@@ -69,9 +70,10 @@ class GlassdoorScraper(object):
         """
         MAIN FUNCTION (tba)
         :param company_name: type=str
-        :param location:
-        :param limit:
+        :param location: city; type=str
+        :param limit: number of pages to be scraped; type=int
         """
+        self.company_name = company_name # store company_name
         # self.getOnReviewsPage(company_name, location) # this stage does not work properly; will be uncommented once login to Glassdoor to be unbugged
         # self.acceptCookies()
         while (self.page <= limit) & (self._isNextPageAvailable()):
@@ -81,15 +83,27 @@ class GlassdoorScraper(object):
                 pd.DataFrame(self.parseReview(review) for review in self.reviews)
             )
             self._goNextPage()
-            self.page+=1
-            time.sleep(2)
+        
+        # correct indexing
+        self.data = self.data.reset_index()
 
+
+    def acceptCookies(self):
+        """
+        Accept cookies consent if displayed.
+        """
+        try:
+            self.driver.find_element_by_id('onetrust-accept-btn-handler').click()
+        except:
+            print('No cookies consent is required to accept.')
+    
     def getOnReviewsPage(self, company_name, location):
         """
         Function that get users at on the first page of reviews for a given company.
         :param company_name: type=str
         :param location:
         """
+        self.company_name = company_name
         self.getURL(self.url)
         self.searchReviews(company_name, location)
         self._clickReviewsButton()
@@ -114,7 +128,7 @@ class GlassdoorScraper(object):
         """
         self.reviews = self.driver.find_elements_by_xpath('//li[@class="empReview cf"]')
         self.reviews.extend(self.driver.find_elements_by_xpath('//li[@class="noBorder empReview cf"]'))    
-
+   
     def searchReviews(self, company_name, location):
         """
         A function that is responsible for searching company's reviews
@@ -138,31 +152,26 @@ class GlassdoorScraper(object):
         :param review: WebElement
         """
         self._getReviewHTML(review) # create self.reviewHTML object
-        self._parseReviewBody() # necessary to obtain 'Pros', 'Cons' and 'Advice to Management'
+        self._parseRecommendationBar() # necessary to obtain attributes: 'Recommendation', 'Outlook', 'OpinionOfCEO'
+        self._parseReviewBody() # necessary to obtain attributes: 'Pros', 'Cons' and 'Advice to Management'
         
         return pd.Series(
             {
+                'Company': self.company_name,
                 'ReviewTitle': self._getReviewTitle(),
                 'Timestamp': self._getTimestamp(),
                 'Rating': self._getRating(),
                 'JobTitle': self._getJobTitle(),
                 'Location': self._getLocation(),
-                'RecommendationBar': self._getRecommendationBar(),
+                'Recommendation': self._getRecommendationBar(element='Recommendation'),
+                'Outlook': self._getRecommendationBar(element='Outlook'),
+                'OpinionOfCEO': self._getRecommendationBar(element='OpinionOfCEO'),
                 'MainText': self._getMainText(),
                 'Pros': self._getReviewBody(element='Pros'),
                 'Cons': self._getReviewBody(element='Cons'),
                 'AdviceToManagement': self._getReviewBody(element='Advice to Management')
             }
         )
-
-    def acceptCookies(self):
-        """
-        Accept cookies consent if displayed.
-        """
-        try:
-            self.driver.find_element_by_id('onetrust-accept-btn-handler').click()
-        except:
-            print('No cookies consent is required to accept.')
     
     #######################
     ### PRIVATE METHODS ###
@@ -270,17 +279,15 @@ class GlassdoorScraper(object):
         except:
             return None
 
-    def _getRecommendationBar(self):
+    def _getRecommendationBar(self, element):
         """
         Parse recomendation bar containing items/attributes like ('positive outlook', 'approves of CEO') etc.
         All the items are concatenated to a string by ' | '.
         """
-        try:
-            recomendationBarItems = re.findall('<div class="col-sm-4">(.+?)</div>', self.reviewHTML)
-            return ' | '.join(re.search('<span>(.+?)</span>', item).group(1) for item in recomendationBarItems)
-        except:
-            return None
-    
+        assert type(element) == str, 'Param element must be a type of str.'
+        assert element in ['Recommendation', 'Outlook', 'OpinionOfCEO'], "Element must be drawn from the list ['Recommendation', 'Outlook', 'OpinionOfCEO']."
+        return self.recommendationBar[element]
+
     def _getReviewBody(self, element):
         """
         Get individual elements of the review body
@@ -327,6 +334,8 @@ class GlassdoorScraper(object):
         else:
             next_url = re.sub('.htm', '_P2.htm', self.driver.current_url)
         self.getURL(next_url)
+        self.page += 1
+        time.sleep(2)
 
     def _isNextPageAvailable(self):
         """
@@ -361,6 +370,61 @@ class GlassdoorScraper(object):
         """
         return len(self.driver.find_elements_by_xpath('//*[@id="HardsellOverlay"]/div/div/div/div/div/div/div/div[1]/div[1]/div/div[2]/button')) > 0
     
+    def _parseRecommendationBar(self):
+        """
+        A function that handles parsing the whole recommendation bar into a single elements
+            - recommendation of a company - (with values of recommends, doesn't recommend, none)
+            - outlook; values - (with values of positive, neutral, negative, none)
+            - approves of ceo - (with values of approves, no opinon, disapproves, none)
+        :param recommendationBar:
+        """
+        try:
+            self.recommendationBar = {}
+            recommendationBar = re.findall('<div class="col-sm-4">(.+?)</div>', self.reviewHTML)
+            self.recommendationBarItems = [re.search('<span>(.+?)</span>', item).group(1) for item in recommendationBar]
+            
+            self.recommendationBar['Recommendation'] = self._parseRecommendationBar_Recommendation()
+            self.recommendationBar['Outlook'] = self._parseRecommendationBar_Outlook()
+            self.recommendationBar['OpinionOfCEO'] = self._parseRecommendationBar_CEO()
+            
+        except: # it is applied when no element of recommendation bar is present in a given review
+            self.recommendationBar = {
+                'Recommend': None,
+                'Outlook': None,
+                'CEO': None
+            }
+    
+    def _parseRecommendationBar_CEO(self):
+        """
+        A helper function returning a reviewer's opinion of CEO.
+        """
+        try:
+            itemCEO = [' '.join(item.split()[:-2]) for item in self.recommendationBarItems if 'ceo' in item.lower()]
+            return itemCEO[0]
+        except:
+            return None
+
+    
+    def _parseRecommendationBar_Outlook(self):
+        """
+        A helper function returning a reviewer's outlook on a company.
+        """
+        try:
+            itemOutlook = [item.split()[0] for item in self.recommendationBarItems if 'outlook' in item.lower()]
+            return itemOutlook[0]
+        except:
+            return None
+
+    def _parseRecommendationBar_Recommendation(self):
+        """
+        A helper function returning a statement whether a reviewer would recommend a given company.
+        """
+        try:
+            itemRecommendation = [item for item in self.recommendationBarItems if 'recommend' in item.lower()]
+            return itemRecommendation[0]
+        except:
+            return None
+    
     def _parseReviewBody(self):
         """
         Parse review body containing 'Pros', 'Cons' and 'Advice to management element'   
@@ -381,25 +445,30 @@ class GlassdoorScraper(object):
 #######################
 
 # application (still needs to be automated in scrape module)
-company_name = '3M Company'
+company_name = 'FedEx Corporation'
 
 scraper = GlassdoorScraper(path_chrome_driver, email)
 scraper.getOnReviewsPage( 
     company_name=company_name,
     location='London'    
-) # There are still some troubles with log in; this should be a part of scrape function
-scraper._loginGoogle()
+) # There are still sometimes some troubles with log in; this should be a part of scrape function
+# scraper._loginGoogle() # use when log in failed
 
 scraper.acceptCookies()
-#scraper._clickContinueReading()
 
 scraper.scrape(
     company_name=company_name,
     location='London',
-    limit=5
+    limit=1
 )
 
-path = f'/mnt/c/Data/{company_name}.xlsx'
+
+
+path = f'/mnt/c/Data/{company_name}_reviews.xlsx'
 scraper.data.to_excel(
     path
 )
+
+def hey(x):
+    x = 
+    return x[0]
