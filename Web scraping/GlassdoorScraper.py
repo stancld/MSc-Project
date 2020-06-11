@@ -48,31 +48,23 @@ class GlassdoorScraper(object):
 
         # Instantiate empty dataframe for storing reviews
         self.schema = [
-            'ReviewTitle', 'Timestamp', 'Rating',
-            'JobTitle', 'Location',' Recommendation',
-            'Outlook', 'OpinionOfCEO', 'Contract',
-            'ContractPeriod', 'Pros', 'Cons',
-            'AdviceToManagement'
+            'ReviewTitle', 'Year', 'Month',
+            'Day', 'Rating', 'JobTitle',
+            'Location',' Recommendation', 'Outlook',
+            'OpinionOfCEO', 'Contract', 'ContractPeriod',
+            'Pros', 'Cons', 'AdviceToManagement'
         ]
         self.data = pd.DataFrame(
             columns = self.schema
         )
 
-        # a dictionary for transforming three-letter months into an integer
+        # a dictionary for converting three-letter months into an integer
         self.monthToInt = {
-            'Jan': 1,
-            'Feb': 2,
-            'Mar': 3,
-            'Apr': 4,
-            'May': 5,
-            'Jun': 6,
-            'Jul': 7,
-            'Aug': 8,
-            'Sep': 9,
-            'Oct': 10,
-            'Nov': 11,
-            'Dec': 12
-        }
+            'Jan': 1, 'Feb': 2, 'Mar': 3,
+            'Apr': 4, 'May': 5, 'Jun': 6,
+            'Jul': 7, 'Aug': 8, 'Sep': 9,
+            'Oct': 10, 'Nov': 11, 'Dec': 12
+        }   
 
         # sanity checks
         assert type(email)==str, 'Param email must be a type of str'
@@ -175,7 +167,9 @@ class GlassdoorScraper(object):
             {
                 'Company': self.company_name,
                 'ReviewTitle': self._getReviewTitle(),
-                'Timestamp': self._getTimestamp(),
+                'Year': self._getTimestamp(element='Year'),
+                'Month': self._getTimestamp(element='Month'),
+                'Day': self._getTimestamp(element='Day'),
                 'Rating': self._getRating(),
                 'JobTitle': self._getJobTitle(),
                 'Location': self._getLocation(),
@@ -342,15 +336,25 @@ class GlassdoorScraper(object):
             return re.search('reviewLink">"(.+?)"</a>', self.reviewHTML).group(1)
         except:
             return None
-    
-    def _getTimestamp(self):
+
+    def _getTimestamp(self, element):
         """
-        Parse review timestamp from review-HTML if available.
+        Get a single element = Day | Month | Year; from a timestamp.
+        :param element: draw from ['Day', 'Month', 'Year'], type=str
         """
-        try:
-            return re.search('<time class="date subtle small" datetime="(.+?)">', self.reviewHTML).group(1)
-        except:
-            return 'Featured Review'
+        assert type(element) == str, 'Param element must be a type of str.'
+        assert element in ['Day', 'Month', 'Year'], "Element must be drawn from the list ['Day', 'Month', 'Year']."
+        if self.timestamp != 'Featured Review':
+            if element == 'Day':
+                return int(self.timestamp.split()[2])
+            elif element == 'Month':
+                return self.monthToInt[
+                    self.timestamp.split()[1]
+                ]
+            elif element == 'Year':
+                return int(self.timestamp.split()[3])
+        else:
+            return 0
     
     def _goNextPage(self):
         """
@@ -438,7 +442,6 @@ class GlassdoorScraper(object):
             return itemCEO[0]
         except:
             return None
-
     
     def _parseRecommendationBar_Outlook(self):
         """
@@ -483,6 +486,16 @@ class GlassdoorScraper(object):
         self._parseRecommendationBar() # necessary to obtain attributes: 'Recommendation', 'Outlook', 'OpinionOfCEO'
         self._parseReviewBody() # necessary to obtain attributes: 'Pros', 'Cons' and 'Advice to Management'
         self._parseMainText() # this contains information on whether an employee is/was full-time/part-time and on a period of contract
+        self._parseTimestamp() # get a timestamp
+
+    def _parseTimestamp(self):
+        """
+        Parse review timestamp from review-HTML if available.
+        """
+        try:
+            self.timestamp = re.search('<time class="date subtle small" datetime="(.+?)">', self.reviewHTML).group(1)
+        except:
+            self.timestamp = 'Featured Review'
 
 
 
