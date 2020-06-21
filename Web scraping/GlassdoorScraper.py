@@ -42,7 +42,7 @@ class GlassdoorScraper(object):
             executable_path=path_chrome_driver,
             options=webdriver.ChromeOptions()
         )
-        self.driver.set_window_size(960, 1080)
+        self.driver.set_window_size(1440, 1080)
         self.driver.set_window_position(0,0)
         
         # store url, email
@@ -155,9 +155,14 @@ class GlassdoorScraper(object):
         :param company_name: type=str
         :param location: type=str
         """
-        self._fillCompanyName(company_name)
-        self._fillLocation(location)
-        self._clickSearchButton()
+        try:
+            self._fillCompanyName(company_name)
+            self._fillLocation(location)
+            self._clickSearchButton()
+        except:
+            self._fillCompanyNameSecondary(company_name)
+            self._fillLocationSecondary(location)
+            self._clickSearchButtonSecondary()
         self.page = 1
         time.sleep(1)
     
@@ -220,6 +225,12 @@ class GlassdoorScraper(object):
         Click "Search" button to trigger search for a company's profile.
         """
         self.driver.find_element_by_class_name("gd-btn-mkt").click()
+    
+    def _clickSearchButtonSecondary(self):
+        """
+        Click "Search" button to trigger search for a company's profile.
+        """
+        self.driver.find_element_by_xpath('/html/body/div[7]/div/nav[1]/div/div/div/div[4]/div[3]/form/div/button').click()
 
     def _fillCompanyName(self, company_name):
         """
@@ -229,6 +240,15 @@ class GlassdoorScraper(object):
         assert type(company_name) == str, 'Param company_name must be a type of str.'
         self.driver.find_element_by_class_name("keyword").clear()
         self.driver.find_element_by_class_name("keyword").send_keys(company_name)
+
+    def _fillCompanyNameSecondary(self, company_name):
+        """
+        There are 
+        """
+        assert type(company_name) == str, 'Param company_name must be a type of str.'
+        self.driver.find_element_by_id("sc.keyword").clear()
+        self.driver.find_element_by_id("sc.keyword").send_keys(company_name)
+
 
     def _fillEmailAndClick(self, email):
         """
@@ -248,6 +268,14 @@ class GlassdoorScraper(object):
         assert type(location) == str, 'Param locaation must be a type of str.'
         self.driver.find_element_by_class_name("loc").clear()
         self.driver.find_element_by_class_name("loc").send_keys(location)
+
+    def _fillLocationSecondary(self, location):
+        """
+        """
+        assert type(location) == str, 'Param locaation must be a type of str.'
+        self.driver.find_element_by_id("sc.location").clear()
+        self.driver.find_element_by_id("sc.location").send_keys(location)
+
 
     def _fillPasswordAndClick(self):
         """
