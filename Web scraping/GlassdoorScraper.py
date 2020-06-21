@@ -11,6 +11,8 @@ sleep_time = 0.5
 
 # import libraries
 import time
+import datetime
+from datetime import date
 import re
 import numpy as np
 import pandas as pd
@@ -28,7 +30,8 @@ class GlassdoorScraper(object):
     #####################
 
     def __init__(self, path_chrome_driver, email,
-                url='https://www.glassdoor.com/Reviews/index.htm'):
+                url='https://www.glassdoor.com/Reviews/index.htm',
+                max_age = 2):
         """
         Instantiate method.
         :param path_chrome_drive: 
@@ -66,6 +69,10 @@ class GlassdoorScraper(object):
             'Oct': 10, 'Nov': 11, 'Dec': 12
         }   
 
+        # get current date so that scraping can be stop w.r.t. date
+        self.current_date = date.today()
+        self.max_age = max_age # how old reviews might be
+
         # sanity checks
         assert type(email)==str, 'Param email must be a type of str'
 
@@ -84,8 +91,8 @@ class GlassdoorScraper(object):
         """
         self.company_name = company_name # store company_name
         # self.getOnReviewsPage(company_name, location) # this stage does not work properly; will be uncommented once login to Glassdoor to be unbugged
-        # self.acceptCookies()
-        while (self.page <= limit) & (self._isNextPageAvailable()):
+        # self.acceptC  ookies()
+        while (self.page <= limit) & (self._isNextPageAvailable()) & (self._newerThanGivenYears()):
             self._clickContinueReading()
             self.getReviews()           
             self.data = self.data.append(
@@ -196,7 +203,10 @@ class GlassdoorScraper(object):
         Click "Continue reading" button to unroll the whole version of reviews.
         """
         while len(self._getContinueReadingList()) > 0:
-            self._getContinueReadingList()[0].click()
+            try:
+                self._getContinueReadingList()[0].click()
+            except:
+                pass
             time.sleep(5)
     
     def _clickReviewsButton(self):
@@ -409,6 +419,21 @@ class GlassdoorScraper(object):
         A function that is responsible for detecting whether a user is required to log in its Glassdoor account.
         """
         return len(self.driver.find_elements_by_xpath('//*[@id="HardsellOverlay"]/div/div/div/div/div/div/div/div[1]/div[1]/div/div[2]/button')) > 0
+
+    def _newerThanGivenYears(self):
+        """
+        A function that returns a boolean whether the oldest scraped review is less than given maximum age.
+        """
+        if self.data.shape[0] > 0:
+            last_date = datetime.datetime.strptime(
+                    '-'.join(
+                        [str(self.data.Year.to_list()[-1]), str(self.data.Month.to_list()[-1]), str(self.data.Day.to_list()[-1])]
+                        ), '%Y-%m-%d'
+                ).date()
+            time_delta = (self.current_date - last_date).days / 365
+            return time_delta < self.max_age
+        else:
+            return True
     
     def _parseMainText(self):
         """
@@ -519,37 +544,3 @@ class GlassdoorScraper(object):
         print(link)
         self.getURL(link)
         time.sleep(1)
-
-
-
-#######################
-##### APPLICATION #####
-#######################
-
-# application (still needs to be automated in scrape module)
-company_name = 'Amazon'
-
-scraper = GlassdoorScraper(path_chrome_driver, email)
-scraper.getOnReviewsPage( 
-    company_name=company_name,
-    location='London'    
-) # There are still sometimes some troubles with log in; this should be a part of scrape function
-# scraper._loginGoogle() # use when log in failed
-
-scraper.acceptCookies()
-
-scraper.scrape(
-    company_name=company_name,
-    location='London',
-    limit=3
-)
-
-
-
-
-path = f'/mnt/c/Data/{company_name}_reviews.xlsx'
-scraper.data.to_excel(
-    path
-)
-
-scraper.driver.get('https://www.seznam.cz')
