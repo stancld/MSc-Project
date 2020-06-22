@@ -468,14 +468,23 @@ class GlassdoorScraper(object):
     def _newerThanGivenYears(self):
         """
         A function that returns a boolean whether the oldest scraped review is less than given maximum age.
+        Sometimes a featured review may occur, which disables to compute time_delta.
+        Not to overcomplicate dropping these records during the scraping, we just look up to the first non-featured review
+        through while and try&except loop.
+        we 
         """
         if self.data[self.data.Company == self.company_name].shape[0] > 0:
-            last_date = datetime.datetime.strptime(
-                    '-'.join(
-                        [str(self.data.Year.to_list()[-1]), str(self.data.Month.to_list()[-1]), str(self.data.Day.to_list()[-1])]
-                        ), '%Y-%m-%d'
-                ).date()
-            time_delta = (self.current_date - last_date).days / 365
+            last_date = None
+            while last_date == None:
+                try:
+                    last_date = datetime.datetime.strptime(
+                            '-'.join(
+                                [str(self.data.Year.to_list()[-1]), str(self.data.Month.to_list()[-1]), str(self.data.Day.to_list()[-1])]
+                                ), '%Y-%m-%d'
+                        ).date()
+                    time_delta = (self.current_date - last_date).days / 365
+                except:
+                    pass
             return time_delta < self.max_age
         else:
             return True

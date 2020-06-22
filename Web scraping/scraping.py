@@ -5,7 +5,7 @@ url = 'https://www.glassdoor.com/Reviews/index.htm'
 
 # set some user parameters
 email = 'daniel.stancl@gmail.com'
-company_name = 'Intel Corporation'
+company_name = 'Amazon'
 location = 'London'
 sleep_time = 0.5
 
@@ -33,7 +33,7 @@ from GlassdoorScraper import GlassdoorScraper
 scraper = GlassdoorScraper(path_chrome_driver, email)
 
 companies = [
-    'Intel Corporation', 'Nvidia Corporation', 'Amazon.Com', 'Advanced Micro Devices', 'Western Digital'
+    'Intel Corporation', 'Nvidia Corporation', 'Amazon', 'Advanced Micro Devices', 'Western Digital'
 ]
 
 start_time = time.time()
@@ -42,12 +42,12 @@ end_times = {}
 for company_name in companies:
     scraper.getOnReviewsPage( 
         company_name=company_name,
-        location='London'    
+        location=location    
     )
     scraper.acceptCookies()
     scraper.scrape(
         company_name=company_name,
-        location='London',
+        location=location,
     )
     end_times[company_name] = time.time()
 
