@@ -51,11 +51,12 @@ class GlassdoorScraper(object):
 
         # Instantiate empty dataframe for storing reviews
         self.schema = [
-            'ReviewTitle', 'Year', 'Month',
-            'Day', 'Rating', 'JobTitle',
-            'Location',' Recommendation', 'Outlook',
-            'OpinionOfCEO', 'Contract', 'ContractPeriod',
-            'Pros', 'Cons', 'AdviceToManagement'
+            'Company', 'ReviewTitle', 'Year',
+            'Month', 'Day', 'Rating',
+            'JobTitle', 'Location', 'Recommendation',
+            'Outlook', 'OpinionOfCEO', 'Contract',
+            'ContractPeriod', 'Pros', 'Cons',
+            'AdviceToManagement'
         ]
         self.data = pd.DataFrame(
             columns = self.schema
@@ -128,7 +129,10 @@ class GlassdoorScraper(object):
         time.sleep(5)
         if self._loginRequired():
             self._loginGoogle()
-        time.sleep(2)
+            time.sleep(20)
+        else:
+            time.sleep(2)
+        self._sortReviewsMostRecent()
         
     def getURL(self, url):
         """
@@ -162,6 +166,7 @@ class GlassdoorScraper(object):
         except:
             self._fillCompanyNameSecondary(company_name)
             self._fillLocationSecondary(location)
+            self._closeAddResumeWindow()
             self._clickSearchButtonSecondary()
         self.page = 1
         time.sleep(1)
@@ -230,7 +235,19 @@ class GlassdoorScraper(object):
         """
         Click "Search" button to trigger search for a company's profile.
         """
-        self.driver.find_element_by_xpath('/html/body/div[7]/div/nav[1]/div/div/div/div[4]/div[3]/form/div/button').click()
+        try:
+            self.driver.find_element_by_xpath('/html/body/div[7]/div/nav[1]/div/div/div/div[4]/div[3]/form/div/button').click()
+        except:
+            self.driver.find_element_by_xpath('/html/body/div[6]/div/nav[1]/div/div/div/div[4]/div[3]/form/div/button').click()
+
+    def _closeAddResumeWindow(self):
+        """
+        Functionality closing 'Add resume' to complete the Glassdoor profile, as it hides 'search button'
+        """
+        try:
+            self.driver.find_element_by_class_name('SVGInline-svg').click()
+        except:
+            pass
 
     def _fillCompanyName(self, company_name):
         """
@@ -317,7 +334,7 @@ class GlassdoorScraper(object):
         :param reviewHTML: HTML code of a review page returned by a function _getReviewHTML, type=str
         """
         try:
-            return re.search('<span class="authorJobTitle middle reviewer">(.+?)</span>', self.reviewHTML).group(1)
+            return re.search('<span class="authorJobTitle middle">(.+?)</span>', self.reviewHTML).group(1)
         except:
             return None
     
@@ -434,7 +451,7 @@ class GlassdoorScraper(object):
         time.sleep(0.5)
         self.driver.switch_to.window(self.driver.window_handles[1])
         self._fillEmailAndClick(self.email)
-        time.sleep(0.5)
+        time.sleep(3.5)
         try:
             print('Type your password.')
             self._fillPasswordAndClick()
@@ -452,7 +469,7 @@ class GlassdoorScraper(object):
         """
         A function that returns a boolean whether the oldest scraped review is less than given maximum age.
         """
-        if self.data.shape[0] > 0:
+        if self.data[self.data.Company == self.company_name].shape[0] > 0:
             last_date = datetime.datetime.strptime(
                     '-'.join(
                         [str(self.data.Year.to_list()[-1]), str(self.data.Month.to_list()[-1]), str(self.data.Day.to_list()[-1])]
@@ -572,3 +589,11 @@ class GlassdoorScraper(object):
         print(link)
         self.getURL(link)
         time.sleep(1)
+
+    def _sortReviewsMostRecent(self):
+        """
+        This function sorts the reviews so that most recent ones are liste first.
+        As it is complicated to unroll list with sorting optins, url address is amended with an appendix
+        """
+        url = self.driver.current_url + '?sort.sortType=RD&sort.ascending=false'
+        self.getURL(url)
