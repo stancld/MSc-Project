@@ -213,10 +213,13 @@ class GlassdoorScraper(object):
         Click "Continue reading" button to unroll the whole version of reviews.
         """
         while len(self._getContinueReadingList()) > 0:
-            try:
-                self._getContinueReadingList()[0].click()
-            except:
-                pass
+            continueReadingPresent = 0
+            while continueReadingPresent == 0:
+                try:
+                    self._getContinueReadingList()[0].click()
+                    continueReadingPresent += 1
+                except:
+                    time.sleep(1)
             time.sleep(5)
     
     def _clickReviewsButton(self):
@@ -475,16 +478,17 @@ class GlassdoorScraper(object):
         """
         if self.data[self.data.Company == self.company_name].shape[0] > 0:
             last_date = None
+            t = 1
             while last_date == None:
                 try:
                     last_date = datetime.datetime.strptime(
                             '-'.join(
-                                [str(self.data.Year.to_list()[-1]), str(self.data.Month.to_list()[-1]), str(self.data.Day.to_list()[-1])]
+                                [str(self.data.Year.to_list()[-t]), str(self.data.Month.to_list()[-t]), str(self.data.Day.to_list()[-t])]
                                 ), '%Y-%m-%d'
                         ).date()
                     time_delta = (self.current_date - last_date).days / 365
                 except:
-                    pass
+                    t += 1
             return time_delta < self.max_age
         else:
             return True

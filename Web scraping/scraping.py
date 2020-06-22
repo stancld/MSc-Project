@@ -32,9 +32,12 @@ from GlassdoorScraper import GlassdoorScraper
 # application (still needs to be automated in scrape module)
 scraper = GlassdoorScraper(path_chrome_driver, email)
 
-companies = [
-    'Intel Corporation', 'Nvidia Corporation', 'Amazon', 'Advanced Micro Devices', 'Western Digital'
-]
+
+#companies = [
+#    'Intel Corporation', 'Nvidia Corporation', 'Amazon', 'Advanced Micro Devices', 'Western Digital'
+#]
+
+companies = [ 'Intel Corporation', 'Amazon']
 
 start_time = time.time()
 end_times = {}
