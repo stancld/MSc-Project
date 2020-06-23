@@ -1,3 +1,11 @@
+"""
+File: GlassdoorScraper.py
+Author: Daniel Stancl
+
+Description:
+"""
+
+
 # set hyperparameters
 path_chrome_driver = '/mnt/c/Data/UCL/@MSC Project/Web scraping/chromedriver.exe'
 url = 'https://www.glassdoor.com/Reviews/index.htm'
@@ -275,10 +283,11 @@ class GlassdoorScraper(object):
         Fill a user e-mail to log in a Glassdoor account.
         :param email: type=str
         """
+        emailClick = 0
         assert type(email) == str, 'Param email must be a type of str.'
         self.driver.find_element_by_xpath('//*[@id="identifierId"]').clear()
         self.driver.find_element_by_xpath('//*[@id="identifierId"]').send_keys(email)
-        self.driver.find_element_by_xpath('//*[@id="identifierNext"]/span/span').click()
+        self.driver.find_element_by_xpath('//*[@id="identifierNext"]/div/span/span').click()
 
     def _fillLocation(self, location):
         """

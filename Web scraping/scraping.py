@@ -5,7 +5,6 @@ url = 'https://www.glassdoor.com/Reviews/index.htm'
 
 # set some user parameters
 email = 'daniel.stancl@gmail.com'
-company_name = 'Amazon'
 location = 'London'
 sleep_time = 0.5
 
@@ -37,10 +36,7 @@ scraper = GlassdoorScraper(path_chrome_driver, email)
 #    'Intel Corporation', 'Nvidia Corporation', 'Amazon', 'Advanced Micro Devices', 'Western Digital'
 #]
 
-companies = [ 'Intel Corporation', 'Amazon']
-
-start_time = time.time()
-end_times = {}
+companies = ['Facebook', 'Apple', 'Microsoft Corporation']
 
 for company_name in companies:
     scraper.getOnReviewsPage( 
@@ -52,12 +48,11 @@ for company_name in companies:
         company_name=company_name,
         location=location,
     )
-    end_times[company_name] = time.time()
 
 #######################
 #######################
 #######################
-path = '/mnt/c/Data/First_reviews.xlsx'
+path = '/mnt/c/Data/FAM_reviews.xlsx'
 scraper.data.to_excel(
     path
 )
