@@ -112,7 +112,6 @@ class GlassdoorScraper(object):
         # correct indexing
         self.data = self.data.reset_index(drop=True)
 
-
     def acceptCookies(self):
         """
         Accept cookies consent if displayed.
@@ -283,7 +282,6 @@ class GlassdoorScraper(object):
         Fill a user e-mail to log in a Glassdoor account.
         :param email: type=str
         """
-        emailClick = 0
         assert type(email) == str, 'Param email must be a type of str.'
         self.driver.find_element_by_xpath('//*[@id="identifierId"]').clear()
         self.driver.find_element_by_xpath('//*[@id="identifierId"]').send_keys(email)
@@ -571,7 +569,7 @@ class GlassdoorScraper(object):
         :param reviewHTML:
         """
         _reviewHTML = re.sub('\r|\n', '', self.reviewHTML)
-        tabs = re.findall('<p class="strong mb-0 mt-xsm">(.+?)</p>', _reviewHTML)
+        tabs = re.findall(  '<p class="strong mb-0 mt-xsm">(.+?)</p>', _reviewHTML)
         tabsText=re.findall(
             '<p class="mt-0 mb-xsm v2__EIReviewDetailsV2__bodyColor v2__EIReviewDetailsV2__lineHeightLarge v2__EIReviewDetailsV2__isExpanded ">(.+?)</p>',
             _reviewHTML
