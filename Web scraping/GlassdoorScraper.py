@@ -5,18 +5,6 @@ Author: Daniel Stancl
 Description:
 """
 
-
-# set hyperparameters
-path_chrome_driver = '/mnt/c/Data/UCL/@MSC Project/Web scraping/chromedriver.exe'
-url = 'https://www.glassdoor.com/Reviews/index.htm'
-
-
-# set some user parameters
-email = 'daniel.stancl@gmail.com'
-company_name = 'Intel Corporation'
-location = 'London'
-sleep_time = 0.5
-
 # import libraries
 import time
 import datetime
@@ -30,6 +18,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
+# import hyperparameters
+from Scraper_setup import *
+
 class GlassdoorScraper(object):
     """
     """
@@ -37,14 +28,17 @@ class GlassdoorScraper(object):
     ### MAGIC METHODS ###
     #####################
 
-    def __init__(self, path_chrome_driver, email,
+    def __init__(self, path_chrome_driver, email, account_type,
                 url='https://www.glassdoor.com/Reviews/index.htm',
                 max_age = 2):
         """
         Instantiate method.
         :param path_chrome_drive: 
         :param email: User email used for a log in to the Glassdoor account, type=str
+        :param account_type: an indiciator what type of account should be used for login
+            currently supported: ['email', 'gmail']
         :param url:
+        :param max_age:
         """
         self.driver = webdriver.Chrome(
             executable_path=path_chrome_driver,
@@ -56,6 +50,8 @@ class GlassdoorScraper(object):
         # store url, email
         self.url = url
         self.email = email
+        self.account_type = account_type.lower()
+        assert account_type.lower() in ['email', 'gmail'], "Param account_type must be drawn from ['email', 'gmail']."
 
         # Instantiate empty dataframe for storing reviews
         self.schema = [
@@ -135,8 +131,12 @@ class GlassdoorScraper(object):
         self._clickReviewsButton()
         time.sleep(5)
         if self._loginRequired():
-            self._loginGoogle()
-            time.sleep(20)
+            if self.account_type = 'gmail':
+                self._loginGoogle()
+                time.sleep(20)
+            elif self.account_type == 'email':
+                self._loginWithEmail()
+                time.sleep(5)
         else:
             time.sleep(2)
         self._sortReviewsMostRecent()
@@ -450,6 +450,14 @@ class GlassdoorScraper(object):
         """
         return len(self.driver.find_elements_by_id('SearchResults')) != 0
 
+    def _loginWithEmail(self):
+        """
+        A module capable to log in to user's Glassdoor account via E-mail.
+        """
+        self.driver.find_element_by_link_text('Sign In').click()
+        self.driver.find_element_by_id('userEmail').send_keys(self.email)
+        self.driver.find_element_by_id('userPassword').send_keys(input())
+        self.driver.find_element_by_name('submit').click()
     
     def _loginGoogle(self):
         """

@@ -1,12 +1,5 @@
 # set hyperparameters
-path_chrome_driver = '/mnt/c/Data/UCL/@MSC Project/Web scraping/chromedriver.exe'
-url = 'https://www.glassdoor.com/Reviews/index.htm'
-
-
-# set some user parameters
-email = 'daniel.stancl@gmail.com'
-location = 'London'
-sleep_time = 0.5
+from Scraper_setup import *
 
 # import libraries
 import time
@@ -29,7 +22,7 @@ from GlassdoorScraper import GlassdoorScraper
 #######################
 
 # application (still needs to be automated in scrape module)
-scraper = GlassdoorScraper(path_chrome_driver, email)
+scraper = GlassdoorScraper(path_chrome_driver, email, account_type='email')
 
 
 #companies = [
