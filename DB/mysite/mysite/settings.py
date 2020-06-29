@@ -31,6 +31,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'tables_daniel.apps.TablesDanielConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

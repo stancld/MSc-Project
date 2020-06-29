@@ -131,7 +131,7 @@ class GlassdoorScraper(object):
         self._clickReviewsButton()
         time.sleep(5)
         if self._loginRequired():
-            if self.account_type = 'gmail':
+            if self.account_type == 'gmail':
                 self._loginGoogle()
                 time.sleep(20)
             elif self.account_type == 'email':
