@@ -6,7 +6,7 @@ mid_text = 100
 long_text = 500
 
 # MODELS
-class CompanyTable(models.Model):
+class Company(models.Model):
     CompanyID = models.IntegerField(null=True)
     Company = models.CharField(max_length=mid_text, blank=True) # Company name
     Symbol = models.CharField(max_length=short_text, blank=True) # Stock symbol of a given company
@@ -18,9 +18,8 @@ class CompanyTable(models.Model):
     Revenue = models.FloatField(null=True) # The most recent available total revenue of a compnay accordin to Yahoo Finance
 
 
-class GlassdoorTable(models.Model):
-    CompanyID = models.ForeignKey(
-        CompanyTable, on_delete=models.CASCADE, null=True)
+class Review(models.Model):
+    CompanyID = models.ForeignKey(Company, on_delete=models.CASCADE, null=True)
     Company = models.CharField(max_length=mid_text, blank=True) # Company name
     ReviewTitle = models.CharField(max_length=long_text, blank=True)
     Year = models.IntegerField(null=True) # Year published

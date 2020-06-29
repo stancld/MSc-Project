@@ -1,7 +1,7 @@
 from django.contrib import admin
 
-from .models import CompanyTable, GlassdoorTable
+from .models import Company, Review
 
 # Register your models here.
-admin.site.register(CompanyTable)
-admin.site.register(GlassdoorTable)
+admin.site.register(Company)
+admin.site.register(Review)

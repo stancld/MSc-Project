@@ -6,6 +6,7 @@ Description:
 """
 # parameters
 stock_indices = ['S&P 500', 'FTSE 100', 'EURO STOXX 50']
+db_path = '/mnt/c/Data/UCL/@MSc Project/DB/mysite/db.sqlite3'
 
 # import libraries
 import time
@@ -13,6 +14,7 @@ import re
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
+import sqlite3
 
 class WikiScraper(object):
     """
@@ -20,7 +22,7 @@ class WikiScraper(object):
     #####################
     ### MAGIC METHODS ###
     #####################
-    def __init__(self):
+    def __init__(self, db_path=db_path):
         """
         """
         self.indexURL = {
@@ -29,14 +31,9 @@ class WikiScraper(object):
             'EURO STOXX 50': 'https://en.wikipedia.org/wiki/EURO_STOXX_50'
         }
 
-        self.schema = [
-            'Company', 'Symbol', 'ListedOn',
-            'Sector', 'Industry', 'Country',
-            'Employees', 'Revenue']
-
-        self.data = pd.DataFrame(
-            columns=self.schema
-        )
+        # initialize the connection to the db
+        self.conn = sqlite3.connect(db_path)
+        self.curs = self.conn.cursor()
 
     #####################
     ## PUBLIC METHODS ###
@@ -121,6 +118,7 @@ class WikiScraper(object):
         url = f'https://finance.yahoo.com/quote/{symbol}/financials?p={symbol}'
         websiteHTML = requests.get(url).text
         parsedHTML = BeautifulSoup(websiteHTML, 'lxml')
+        return 12
     
     def _getCompanySector(self, profileContent):
         """
@@ -186,7 +184,7 @@ class WikiScraper(object):
 #######################
 ##### APPLICATION #####
 #######################
-
+"""
 wikiScraper = WikiScraper()
 for stock_index in stock_indices:
     wikiScraper.scrapeWikipedia(stock_index)
@@ -205,3 +203,4 @@ str_text = str(text)
 text.findAll('span')[-1].text
 
 re.findall(r'<!-- react-text: (\d{1,2}) -->(.+?)<!-- /react-text -->', str_text)[2][1]
+"""
