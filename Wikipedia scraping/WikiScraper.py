@@ -15,6 +15,7 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import sqlite3
 import django
+from django.utils import timezone
 
 class WikiScraper(object):
     """
@@ -83,23 +84,36 @@ class WikiScraper(object):
                 self._getCompanyRevenue(dataRow['Symbol'])
             )
             time.sleep(2.5)
+            self.data[i].update(
+                {
+                    'CompanyID': i, # can be substituted by more elaborated ticker in the future
+                    'Timestamp': timezone.now()
+                }
+            )
+            
             if (i+1)%20==0:
                 print(f'{i+1:.0f} companies out of {len(self.data):.0f} scraped from Yahoo.')
 
     def saveToCSV(self, path):
         """
         """
-        pass
+        pd.DataFrame(
+            self.data
+        ).to_csv(path)
 
     def saveToExcel(self, path):
         """
         """
-        pass
+        pd.DataFrame(
+            self.data
+        ).to_excel(path)
 
     def writeToDjangoDB(self):
         """
         """
-        pass
+        [self._writeRowToDjangoDB(datarow) for datarow in self.data]
+
+
     #####################
     ## PRIVATE METHODS ##
     #####################
@@ -241,15 +255,26 @@ class WikiScraper(object):
                 'ListedOn': self.stock_index
             }
     
-    def _saveWikiTableRowToDjangoDB(self, company, symbol, listedOn):
+    def _writeRowToDjangoDB(self, datarow):
         """
+        :param datarow:
         """
-        companyRecord = self.CompanyWriter(
-            Company = company,
-            Symbol = symbol,
-            ListedOn = listedOn
-        )
-        companyRecord.save()
+        try:
+            companyRecord = self.CompanyWriter(
+                CompanyID = datarow['CompanyID'],
+                Company = datarow['Company'],
+                Symbol = datarow['Symbol'],
+                ListedOn = datarow['ListedOn'],
+                Sector = datarow['Sector'],
+                Industry = datarow['Industry'],
+                Country = datarow['Country'],
+                Employees = datarow['Employees'],
+                Revenue = datarow['Revenue'],
+                Timestamp = datarow['Timestamp']
+            )
+            companyRecord.save()
+        except Exception as e:
+            print(e)
 
     def _transformToInt(self, x):
         """

@@ -1,26 +1,26 @@
 # setup
 import os
+import sys
+from django.utils import timezone
 from WikiScraper import *
 
+if __name__=='__main__':
+    pass
+
 # import Company - django.db.models.Model
-cwd = os.getcwd()
 exec(open('set_django_db.py').read())
+print(sys.path)
 from tables_daniel.models import Company
-os.chdir(cwd)
 
 # parameters
 stock_indices = ['S&P 500', 'FTSE 100', 'EURO STOXX 50']
-
 stock_indices = ['EURO STOXX 50']
+
 #######################
 ##### APPLICATION #####
 #######################
-wikiScraper = WikiScraper()
+wikiScraper = WikiScraper(CompanyWriter=Company)
 for stock_index in stock_indices:
     wikiScraper.scrapeWikipedia(stock_index)
-wikiScraper._scrapeYahooFinance_()
-
-
-wikiScraper.data
-
-
+wikiScraper.scrapeYahooFinance()
+wikiScraper.writeToDjangoDB()
