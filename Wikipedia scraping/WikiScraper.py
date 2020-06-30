@@ -14,6 +14,7 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import sqlite3
+import django
 
 class WikiScraper(object):
     """
@@ -21,8 +22,9 @@ class WikiScraper(object):
     #####################
     ### MAGIC METHODS ###
     #####################
-    def __init__(self):
+    def __init__(self, CompanyWriter=None):
         """
+        :param CompanyWriter: type=django.db.models.base.ModelBase
         """
         self.indexURL = {
             'S&P 500': 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies',
@@ -31,13 +33,21 @@ class WikiScraper(object):
         }
 
         self.schema = [
-            'Company', 'Symbol', 'ListedOn',
-            'Sector', 'Industry', 'Country',
-            'Employees', 'Revenue']
+            'CompanyID', 'Company', 'Symbol',
+            'ListedOn', 'Sector', 'Industry',
+            'Country', 'Employees', 'Revenue',
+            'Timestamp']
 
-        self.data = pd.DataFrame(
-            columns=self.schema
-        )
+        self.data = []
+
+        if CompanyWriter == None:
+            # if no database is attached, pandas DataFrame are used instead
+            self.CompanyWriterIsUsed = False
+        else:
+            # in othercase, CompanyWriter is stored
+            assert type(CompanyWriter) == django.db.models.base.ModelBase, 'param CompanyWritert must be of type django.db.models.base.ModelBase!'
+            self.CompanyWriter = CompanyWriter
+            self.CompanyWriterIsUsed = True
 
     #####################
     ## PUBLIC METHODS ###
@@ -53,22 +63,43 @@ class WikiScraper(object):
 
         parsedHTML = self._getParseWikiHTML(stock_index)
         tableRows = self._getTableRows(parsedHTML)
-        self.data = self.data.append(
-            pd.DataFrame(self._parseRow(row) for row in tableRows)
-        ).reset_index(drop=True)
+        
+        self.data.extend(
+            [self._parseWikiTableRow(row) for row in tableRows]
+        )
 
     def scrapeYahooFinance(self):
         """
         A function that scrapes some other company information from Yahoo Finance.
         At this moment, it is expected scrapeWikipedia function is utilized a priori, hence the assert condition.
         """
-        assert self.data.shape[0] > 0, "Please, run self.scrapeWikipedia() first!"
-        for i, companySymbol in enumerate(self.data.Symbol):
-            self.data.loc[i, ['Sector', 'Industry', 'Country', 'Employees']] = self._getCompanyProfile(companySymbol)
-            time.sleep(0.5)
-            self.data.loc[i, 'Revenue'] = self._getCompanyRevenue(companySymbol)
-            time.sleep(2)
+        assert len(self.data) > 0, "Please, run self.scrapeWikipedia() first!"
+        for i, dataRow in enumerate(self.data):
+            self.data[i].update(
+                self._getCompanyProfile(dataRow['Symbol'])
+            )
+            time.sleep(2.5)
+            self.data[i].update(
+                self._getCompanyRevenue(dataRow['Symbol'])
+            )
+            time.sleep(2.5)
+            if (i+1)%20==0:
+                print(f'{i+1:.0f} companies out of {len(self.data):.0f} scraped from Yahoo.')
 
+    def saveToCSV(self, path):
+        """
+        """
+        pass
+
+    def saveToExcel(self, path):
+        """
+        """
+        pass
+
+    def writeToDjangoDB(self):
+        """
+        """
+        pass
     #####################
     ## PRIVATE METHODS ##
     #####################
@@ -113,15 +144,13 @@ class WikiScraper(object):
         """
         parsedHTML = self._getParseYahooHTML(symbol, 'profile')
         profileContent = str(parsedHTML.find('div', {'class': 'Mb(25px)'}))
-
-        return pd.Series(
-            {
-                'Sector': self._getCompanySector(profileContent),
-                'Industry': self._getCompanyIndustry(profileContent),
-                'Country': self._getCompanyCountry(profileContent),
-                'Employees': self._getCompanyEmployees(profileContent)
-            }
-        )
+        
+        return {
+            'Sector': self._getCompanySector(profileContent),
+            'Industry': self._getCompanyIndustry(profileContent),
+            'Country': self._getCompanyCountry(profileContent),
+            'Employees': self._getCompanyEmployees(profileContent)
+        }
 
     def _getCompanyRevenue(self, symbol):
         """
@@ -129,9 +158,9 @@ class WikiScraper(object):
         parsedHTML = self._getParseYahooHTML(symbol, 'financials')
         try:
             revenue = self._parseRevenue(parsedHTML)
-            return revenue
+            return {'Revenue': revenue}
         except:
-            return 0
+            return {'Revenue': 0}
         
     
     def _getCompanySector(self, profileContent):
@@ -186,42 +215,47 @@ class WikiScraper(object):
         ))
         return revenue
     
-    def _parseRow(self, row):
+    def _parseWikiTableRow(self, row):
         """
         :param row:
         """
         if self.stock_index == 'S&P 500':
-            return pd.Series(
-                {
-                    'Company': row.findAll('a')[1].text,
-                    'Symbol': row.findAll('a')[0].text,
-                    'ListedOn': self.stock_index
-                }
-            )
+            return {
+                'Company': row.findAll('a')[1].text,
+                'Symbol': row.findAll('a')[0].text,
+                'ListedOn': self.stock_index
+            }
+            
 
         elif self.stock_index == 'FTSE 100':
-            return pd.Series(
-                {
-                    'Company': row.findAll('td')[0].text,
-                    'Symbol': row.findAll('td')[1].text,
-                    'ListedOn': self.stock_index
-                }
-            )
+            return {
+                'Company': row.findAll('td')[0].text,
+                'Symbol': row.findAll('td')[1].text,
+                'ListedOn': self.stock_index
+            }
         
         elif self.stock_index == 'EURO STOXX 50':
-            return pd.Series(
-                {
-                    'Company': row.findAll('a')[2].text,
-                    'Symbol': row.findAll('td')[0].text,
-                    'ListedOn': self.stock_index
-                }
-            )
+            return {
+                'Company': row.findAll('a')[2].text,
+                'Symbol': row.findAll('td')[0].text,
+                'ListedOn': self.stock_index
+            }
     
+    def _saveWikiTableRowToDjangoDB(self, company, symbol, listedOn):
+        """
+        """
+        companyRecord = self.CompanyWriter(
+            Company = company,
+            Symbol = symbol,
+            ListedOn = listedOn
+        )
+        companyRecord.save()
+
     def _transformToInt(self, x):
         """
         This helper function transforms a given str element to int if possible, otherwise str element is returned.
         """
         try:
-            return int(x.strip())
+            return int(x.strip().strip(','))
         except:
-            return x.strip()
+            return x.strip().strip(',')
