@@ -2,10 +2,8 @@
 File: WikiScraper.py
 Author: Daniel Stancl
 
-Description:
+Description: Class WikiYahooScraper used for MSc Project.
 """
-# parameters
-stock_indices = ['S&P 500', 'FTSE 100', 'EURO STOXX 50']
 
 # import libraries
 import time
@@ -19,13 +17,20 @@ from django.utils import timezone
 
 class WikiScraper(object):
     """
+    More proper name of this class is WikiYahooScraper.
+    This class has two major purposes:
+        1. It is capable to scrape companies listed on some major stock indices from Wikipedia.
+        2. It is able to find more information for companies obtained in the step 1 from Yahoo Finance.
+    Subsequently, this class can save the data either as csv/xlsx file using pandas, or the data can be sent to django dataabse.
     """ 
     #####################
     ### MAGIC METHODS ###
     #####################
     def __init__(self, CompanyWriter=None):
         """
-        :param CompanyWriter: type=django.db.models.base.ModelBase
+        :param CompanyWriter:
+            CompanyWriter is django Model base that is used for writing and storing the data in a given databse
+            type=django.db.models.base.ModelBase
         """
         self.indexURL = {
             'S&P 500': 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies',
@@ -38,7 +43,6 @@ class WikiScraper(object):
             'ListedOn', 'Sector', 'Industry',
             'Country', 'NoEmployees', 'Revenue',
             'Timestamp']
-
         self.data = []
 
         if CompanyWriter == None:
@@ -96,33 +100,44 @@ class WikiScraper(object):
 
     def saveToCSV(self, path):
         """
+        Function saving the scraped data into a csv file.
+        :param path: absolute path of a stored file; type=str
         """
+        if self.CompanyWriterIsUsed:
+            print('Alert: CompanyWriter is defined. Would you like to store the data in djnago database instead?')
+        
         pd.DataFrame(
             self.data,
-	    columns=self.schema
+	        columns=self.schema
         ).to_csv(path)
 
     def saveToExcel(self, path):
         """
+        Function saving the scraped data into a xlsx file.
+        :param path: absolute path of a stored file; type=str
         """
+        if self.CompanyWriterIsUsed:
+            print('Alert: CompanyWriter is defined. Would you like to store the data in djnago database instead?')
+        
         pd.DataFrame(
             self.data,
-	    columns=self.schema
+	        columns=self.schema
         ).to_excel(path)
 
     def writeToDjangoDB(self):
         """
+        Function writing the scraped dat into an existing django database.
         """
         [self._writeRowToDjangoDB(datarow) for datarow in self.data]
-
 
     #####################
     ## PRIVATE METHODS ##
     #####################
     def _getCompanyCountry(self, profileContent):
         """
-        :param profileContent:
+        This function gets country of company's HQ from Yahoo Finance.
         Parsing company's country is a bit tricky as it an be located whenever from 1st to 4th row in the react text.
+        :param profileContent: content of profile section from Yahoo Finance in string format; type=str
         """
         try:
             i = 0
@@ -139,7 +154,8 @@ class WikiScraper(object):
     
     def _getCompanyEmployees(self, profileContent):
         """
-        :param profileContent:
+        This function gets a number of comapny's employees Yahoo Finance.
+        :param profileContent: content of profile section from Yahoo Finance in string format; type=str
         """
         try:
             return int(re.sub(',', '', re.findall(r'<span data-reactid="(\d{1,2})">(.+?)</span>', profileContent)[-1][1]))
@@ -148,7 +164,8 @@ class WikiScraper(object):
 
     def _getCompanyIndustry(self, profileContent):
         """
-        :param profileContent
+        This function gets an industry a company operates in from Yahoo Finance.
+        :param profileContent: content of profile section from Yahoo Finance in string format; type=str
         """
         try:
             return re.findall(r'data-reactid="(\d{1,2})">(.+?)</span>', profileContent)[-3][1]
@@ -157,7 +174,9 @@ class WikiScraper(object):
     
     def _getCompanyProfile(self, symbol):
         """
+        Within this function, Yahoo HTML is parsed and a company's Sector, Industry, Conytr of HQ and number of employees are returned.
         While & try/except loop is required as sometimes an access to webpage might be denied.
+        :param symbol: stock symbol of a company that is used for completing url address on Yahoo Finance; type=str
         """
         isSuccess = False
         while isSuccess == False:
@@ -177,7 +196,9 @@ class WikiScraper(object):
 
     def _getCompanyRevenue(self, symbol):
         """
+        This function resemlbes a simplified combination of self._getCompanyProfile and one of self._getCompanyEmployees etc.
         While & try/except loop is required as sometimes an access to webpage might be denied.
+        :param symbol: stock symbol of a company that is used for completing url address on Yahoo Finance; type=str
         """
         isSuccess = False
         while isSuccess == False:
@@ -195,7 +216,8 @@ class WikiScraper(object):
     
     def _getCompanySector(self, profileContent):
         """
-        :param profileContent
+        This function gets an industry a company operates in from Yahoo Finance.
+        :param profileContent: content of profile section from Yahoo Finance in string format; type=str
         """
         try:
             return re.findall(r'data-reactid="(\d{1,2})">(.+?)</span>', profileContent)[-5][1]
@@ -204,8 +226,9 @@ class WikiScraper(object):
     
     def _getParseYahooHTML(self, symbol, content):
         """
-        :param symbol:
-        :param content: 
+        This function parses Yahoo HTML content subsequenlty used in _getCompanyProfile & _getCompanyRevenue functions.
+        :param symbol: stock symbol of a company that is used for completing url address on Yahoo Finance; type=str
+        :param content: an indication which 
             supported values: ['profile', financials]
         """
         assert content in ['profile', 'financials'], "Param content must be drawn from ['profile', 'financials']."
@@ -216,7 +239,9 @@ class WikiScraper(object):
 
     def _getParseWikiHTML(self, stock_index):
         """
-        :param stock_index:
+        This function parses wikipedia HTML into machine-readable format used in other function.
+        The specific parsing is chocen based upon the stock_index param.
+        :param stock_index: stock_index; type=str
         """
         websiteHTML = requests.get(self.indexURL[stock_index]).text
         parsedWebsiteHTML = BeautifulSoup(websiteHTML, 'lxml')
@@ -224,7 +249,8 @@ class WikiScraper(object):
     
     def _getTableRows(self, parsedHTML):
         """
-        :param parsedHTML:
+        This function gets the whole table (splitted into individual rows) from Wikipedia page.
+        :param parsedHTML: parsed webiste returned by _getParseWikiHTML function; type=bs4
         """
         if self.stock_index == 'S&P 500':
             table = parsedHTML.find('table', {'class': 'wikitable sortable'})
@@ -236,7 +262,7 @@ class WikiScraper(object):
     def _parseRevenue(self, parsedHTML):
         """
         Parsing company's revenue from the table posted on Yahoo Finance is not straightforward hence a single function is dedicated to this task.
-        :param parsedHTML:
+        :param parsedHTML: parsed webiste returned by _getParseYahooHTML function; type=bs4
         """
         financialTable = parsedHTML.find('div', {'class': 'D(tbrg)'})
         unparsedRevenue = str(financialTable.find_all('div', {'class': 'Ta(c) Py(6px) Bxz(bb) BdB Bdc($seperatorColor) Miw(120px) Miw(140px)--pnclg Bgc($lv1BgColor) fi-row:h_Bgc($hoverBgColor) D(tbc)'})[0])
@@ -247,7 +273,8 @@ class WikiScraper(object):
     
     def _parseWikiTableRow(self, row):
         """
-        :param row:
+        This function parses an individual row from Wiki Table returned by _getTableRows function.
+        :param row: a single row from a Wiki table; type=bs4
         """
         if self.stock_index == 'S&P 500':
             return {
@@ -256,7 +283,6 @@ class WikiScraper(object):
                 'ListedOn': self.stock_index
             }
             
-
         elif self.stock_index == 'FTSE 100':
             return {
                 'Company': row.findAll('td')[0].text,
@@ -273,7 +299,8 @@ class WikiScraper(object):
     
     def _writeRowToDjangoDB(self, datarow):
         """
-        :param datarow:
+        This function writes the scraped records into a connected django database.
+        :param datarow: datarow is a single dict element from the list of all scraped records; type=dict
         """
         try:
             companyRecord = self.CompanyWriter(
@@ -295,6 +322,7 @@ class WikiScraper(object):
     def _transformToInt(self, x):
         """
         This helper function transforms a given str element to int if possible, otherwise str element is returned.
+        :param x: an address element from YahooFinance profile section; type=str
         """
         try:
             return int(x.strip().strip(','))

@@ -1,6 +1,3 @@
-# set hyperparameters
-from Scraper_setup import *
-
 # import libraries
 import time
 import datetime
@@ -23,6 +20,7 @@ from GlassdoorScraper import GlassdoorScraper
 
 # application (still needs to be automated in scrape module)
 if __name__=='__main__':
+    from Scraper_setup import *
     exec(open('set_django_db.py').read())
     from tables_daniel.models import Review
 
