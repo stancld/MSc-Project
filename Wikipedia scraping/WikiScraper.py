@@ -36,7 +36,7 @@ class WikiScraper(object):
         self.schema = [
             'CompanyID', 'Company', 'Symbol',
             'ListedOn', 'Sector', 'Industry',
-            'Country', 'Employees', 'Revenue',
+            'Country', 'NoEmployees', 'Revenue',
             'Timestamp']
 
         self.data = []
@@ -98,14 +98,16 @@ class WikiScraper(object):
         """
         """
         pd.DataFrame(
-            self.data
+            self.data,
+	    columns=self.schema
         ).to_csv(path)
 
     def saveToExcel(self, path):
         """
         """
         pd.DataFrame(
-            self.data
+            self.data,
+	    columns=self.schema
         ).to_excel(path)
 
     def writeToDjangoDB(self):
@@ -155,21 +157,35 @@ class WikiScraper(object):
     
     def _getCompanyProfile(self, symbol):
         """
+        While & try/except loop is required as sometimes an access to webpage might be denied.
         """
-        parsedHTML = self._getParseYahooHTML(symbol, 'profile')
+        isSuccess = False
+        while isSuccess == False:
+            try:
+                parsedHTML = self._getParseYahooHTML(symbol, 'profile')
+                isSuccess = True
+            except:
+                time.sleep(1)
         profileContent = str(parsedHTML.find('div', {'class': 'Mb(25px)'}))
         
         return {
             'Sector': self._getCompanySector(profileContent),
             'Industry': self._getCompanyIndustry(profileContent),
             'Country': self._getCompanyCountry(profileContent),
-            'Employees': self._getCompanyEmployees(profileContent)
+            'NoEmployees': self._getCompanyEmployees(profileContent)
         }
 
     def _getCompanyRevenue(self, symbol):
         """
+        While & try/except loop is required as sometimes an access to webpage might be denied.
         """
-        parsedHTML = self._getParseYahooHTML(symbol, 'financials')
+        isSuccess = False
+        while isSuccess == False:
+            try:
+                parsedHTML = self._getParseYahooHTML(symbol, 'financials')
+                isSuccess = True
+            except:
+                time.sleep(1)
         try:
             revenue = self._parseRevenue(parsedHTML)
             return {'Revenue': revenue}
@@ -268,7 +284,7 @@ class WikiScraper(object):
                 Sector = datarow['Sector'],
                 Industry = datarow['Industry'],
                 Country = datarow['Country'],
-                Employees = datarow['Employees'],
+                NoEmployees = datarow['NoEmployees'],
                 Revenue = datarow['Revenue'],
                 Timestamp = datarow['Timestamp']
             )

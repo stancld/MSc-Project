@@ -12,6 +12,8 @@ from datetime import date
 import re
 import numpy as np
 import pandas as pd
+import django
+from django.utils import timezone
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -29,6 +31,7 @@ class GlassdoorScraper(object):
     #####################
 
     def __init__(self, path_chrome_driver, email, account_type,
+                review_writer=None,
                 url='https://www.glassdoor.com/Reviews/index.htm',
                 max_age = 2):
         """
@@ -37,6 +40,7 @@ class GlassdoorScraper(object):
         :param email: User email used for a log in to the Glassdoor account, type=str
         :param account_type: an indiciator what type of account should be used for login
             currently supported: ['email', 'gmail']
+        :param review_writer:
         :param url:
         :param max_age:
         """
@@ -55,16 +59,14 @@ class GlassdoorScraper(object):
 
         # Instantiate empty dataframe for storing reviews
         self.schema = [
-            'Company', 'ReviewTitle', 'Year',
-            'Month', 'Day', 'Rating',
+            'CompanyID', 'Company', 'ReviewTitle',
+            'Year', 'Month', 'Day', 'Rating',
             'JobTitle', 'Location', 'Recommendation',
             'Outlook', 'OpinionOfCEO', 'Contract',
             'ContractPeriod', 'Pros', 'Cons',
-            'AdviceToManagement'
+            'AdviceToManagement', 'Timestamp'
         ]
-        self.data = pd.DataFrame(
-            columns = self.schema
-        )
+        self.data = []
 
         # a dictionary for converting three-letter months into an integer
         self.monthToInt = {
@@ -81,32 +83,44 @@ class GlassdoorScraper(object):
         # sanity checks
         assert type(email)==str, 'Param email must be a type of str'
 
+        if review_writer != None:
+            assert type(review_writer) == django.db.models.base.ModelBase, 'param CompanyWritert must be of type django.db.models.base.ModelBase!'
+            self.ReviewWriter = review_writer
+            self.reviewWriterIsUsed = True
+
+
     ######################
     ### PUBLIC METHODS ###
     ## major func first ##
     # alphabetical order #
     ######################
 
-    def scrape(self, company_name, location, limit = float(np.inf)):
+    def scrape(self, company_name, location, 
+                limit = float(np.inf)):
         """
         MAIN FUNCTION (tba)
+        In this case, data are stored gradually because they might require a relatively large amount of space. This is a difference from WikiYahooScraper.
         :param company_name: type=str
         :param location: city; type=str
         :param limit: number of pages to be scraped; type=int
         """
+        if self.reviewWriterIsUsed == True:
+            # make self.data to be always an empty list if they are to be written into django db
+            self.data = []
         self.company_name = company_name # store company_name
         # self.getOnReviewsPage(company_name, location) # this stage does not work properly; will be uncommented once login to Glassdoor to be unbugged
         # self.acceptC  ookies()
         while (self.page <= limit) & (self._isNextPageAvailable()) & (self._newerThanGivenYears()):
             self._clickContinueReading()
             self.getReviews()           
-            self.data = self.data.append(
-                pd.DataFrame(self.parseReview(review) for review in self.reviews)
+            self.data.extend(
+                [self.parseReview(review) for review in self.reviews]
             )
             self._goNextPage()
         
-        # correct indexing
-        self.data = self.data.reset_index(drop=True)
+        # store the data if they are to be stored in django DB
+        if self.reviewWriterIsUsed == True:
+            [self._writeRowToDjangoDB(datarow) for datarow in self.data]
 
     def acceptCookies(self):
         """
@@ -158,6 +172,30 @@ class GlassdoorScraper(object):
         self.reviews = self.driver.find_elements_by_xpath('//li[@class="empReview cf"]')
         self.reviews.extend(self.driver.find_elements_by_xpath('//li[@class="noBorder empReview cf"]'))    
    
+    def saveToCSV(self, path):
+        """
+        :patam path:
+        """
+        if self.reviewWriteIsUsed == True:
+            print(f'Data cannot be saved to {path} as they have continuosly pushed to django database.')
+        else:
+            pd.DataFrame(
+                self.data,
+                columns=self.schema
+            ).to_csv(path)
+
+    def saveToExcel(self, path):
+        """
+        :param path:
+        """
+        if self.reviewWriteIsUsed == True:
+            print(f'Data cannot be saved to {path} as they have continuosly pushed to django database.')
+        else:
+            pd.DataFrame(
+                self.data,
+                columns=self.schema
+            ).to_excel(path)
+    
     def searchReviews(self, company_name, location):
         """
         A function that is responsible for searching company's reviews
@@ -189,26 +227,25 @@ class GlassdoorScraper(object):
         self._getReviewHTML(review) # create self.reviewHTML object
         self._parseReviewElements()
         
-        return pd.Series(
-            {
-                'Company': self.company_name,
-                'ReviewTitle': self._getReviewTitle(),
-                'Year': self._getTimestamp(element='Year'),
-                'Month': self._getTimestamp(element='Month'),
-                'Day': self._getTimestamp(element='Day'),
-                'Rating': self._getRating(),
-                'JobTitle': self._getJobTitle(),
-                'Location': self._getLocation(),
-                'Recommendation': self._getRecommendationBar(element='Recommendation'),
-                'Outlook': self._getRecommendationBar(element='Outlook'),
-                'OpinionOfCEO': self._getRecommendationBar(element='OpinionOfCEO'),
-                'Contract': self._getContract(),
-                'ContractPeriod': self._getContractPeriod(),
-                'Pros': self._getReviewBody(element='Pros'),
-                'Cons': self._getReviewBody(element='Cons'),
-                'AdviceToManagement': self._getReviewBody(element='Advice to Management')
-            }
-        )
+        return {
+            'Company': self.company_name,
+            'ReviewTitle': self._getReviewTitle(),
+            'Year': self._getTimestamp(element='Year'),
+            'Month': self._getTimestamp(element='Month'),
+            'Day': self._getTimestamp(element='Day'),
+            'Rating': self._getRating(),
+            'JobTitle': self._getJobTitle(),
+            'EmployeeRelationship': self._getEmployeeRelationship(),
+            'Location': self._getLocation(),
+            'Recommendation': self._getRecommendationBar(element='Recommendation'),
+            'Outlook': self._getRecommendationBar(element='Outlook'),
+            'OpinionOfCEO': self._getRecommendationBar(element='OpinionOfCEO'),
+            'Contract': self._getContract(),
+            'ContractPeriod': self._getContractPeriod(),
+            'Pros': self._getReviewBody(element='Pros'),
+            'Cons': self._getReviewBody(element='Cons'),
+            'AdviceToManagement': self._getReviewBody(element='Advice to Management')
+        }
     
     #######################
     ### PRIVATE METHODS ###
@@ -312,6 +349,17 @@ class GlassdoorScraper(object):
         self.driver.find_element_by_xpath('//*[@id="password"]/div[1]/div/div[1]/input').send_keys(input())
         self.driver.find_element_by_xpath('//*[@id="passwordNext"]/span/span').click()
 
+    def _getEmployeeRelationship(self):
+        """
+        Parse reviewer's employee relationship, i.e. a former or current one, from review-HTML if available. 
+        :param reviewHTML: HTML code of a review page returned by a function _getReviewHTML, type=str
+        """
+        try:
+            titleAndRelationshop = re.search('<span class="authorJobTitle middle">(.+?)</span>', self.reviewHTML).group(1)
+            return titleAndRelationshop.split(' - ')[1]
+        except:
+            return None
+    
     def _getContinueReadingList(self):
         """
         Get the most recent version of 'Continue reading' buttons on reviews page.
@@ -344,7 +392,8 @@ class GlassdoorScraper(object):
         :param reviewHTML: HTML code of a review page returned by a function _getReviewHTML, type=str
         """
         try:
-            return re.search('<span class="authorJobTitle middle">(.+?)</span>', self.reviewHTML).group(1)
+            titleAndRelationshop = re.search('<span class="authorJobTitle middle">(.+?)</span>', self.reviewHTML).group(1)
+            return titleAndRelationshop.split(' - ')[0]
         except:
             return None
     
@@ -625,3 +674,34 @@ class GlassdoorScraper(object):
         """
         url = self.driver.current_url + '?sort.sortType=RD&sort.ascending=false'
         self.getURL(url)
+    
+    def _writeRowToDjangoDB(self, datarow):
+        """
+        :param datarow:
+        """
+        try:
+            reviewRecord = self.ReviewWriter(
+                CompanyID = 0,
+                Company = datarow['Company'],
+                ReviewTitle = datarow['ReviewTitle'],
+                Year = datarow['Year'],
+                Month = datarow['Month'],
+                Day = datarow['Month'],
+                Rating = datarow['Rating'],
+                JobTitle = datarow['JobTitle']
+                EmployeeRelationship = datarow['EmployeeRelationship'],
+                Location = datarow['Location'],
+                Recommendation = datarow['Recommendation'],
+                Outlook = datarow['Outlook'],
+                OpinionOfCEO = datarow['OpinionOfCEO'],
+                Contract = datarow['Contract'],
+                ContractPeriod = datarow['ContractPeriod'],
+                Pros = datarow['Pros'],
+                Cons = datarow['Cons'],
+                AdviceToManagement = datarow['AdviceToManagement'],
+                Timestamp = timezone.now()
+            )
+            reviewRecord.save()
+
+        except Exception as e:
+            print(e)

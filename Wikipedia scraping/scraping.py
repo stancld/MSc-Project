@@ -11,7 +11,6 @@ if __name__=='__main__':
 
     # parameters
     stock_indices = ['S&P 500', 'FTSE 100', 'EURO STOXX 50']
-    stock_indices = ['EURO STOXX 50']
 
     #######################
     ##### APPLICATION #####
