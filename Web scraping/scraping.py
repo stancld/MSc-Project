@@ -22,30 +22,20 @@ from GlassdoorScraper import GlassdoorScraper
 #######################
 
 # application (still needs to be automated in scrape module)
-scraper = GlassdoorScraper(path_chrome_driver, email, account_type='email')
+if __name__=='__main__':
+    exec(open('set_django_db.py').read())
+    from tables_daniel.models import Review
 
+    scraper = GlassdoorScraper(path_chrome_driver, email, account_type='email', review_writer=Review)
+    companies = ['Facebook', 'Apple', 'Microsoft Corporation']
 
-#companies = [
-#    'Intel Corporation', 'Nvidia Corporation', 'Amazon', 'Advanced Micro Devices', 'Western Digital'
-#]
-
-companies = ['Facebook', 'Apple', 'Microsoft Corporation']
-
-for company_name in companies:
-    scraper.getOnReviewsPage( 
-        company_name=company_name,
-        location=location    
-    )
-    scraper.acceptCookies()
-    scraper.scrape(
-        company_name=company_name,
-        location=location,
-    )
-
-#######################
-#######################
-#######################
-path = '/mnt/c/Data/FAM_reviews.xlsx'
-scraper.data.to_excel(
-    path
-)
+    for company_name in companies:
+        scraper.getOnReviewsPage( 
+            company_name=company_name,
+            location=location    
+        )
+        scraper.acceptCookies()
+        scraper.scrape(
+            company_name=company_name,
+            location=location,
+        )
