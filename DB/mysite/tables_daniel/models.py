@@ -16,6 +16,10 @@ class Company(models.Model):
     Country = models.CharField(max_length=mid_text, blank=True) # Country of HQ'
     NoEmployees = models.IntegerField(null=True) # Number of employees according to Yahoo Finance
     Revenue = models.FloatField(null=True) # The most recent available total revenue of a compnay accordin to Yahoo Finance
+    Timestamp = models.TimeField(null=True) # the time of the record
+
+    def __str__(self):
+        return self.Company
 
 
 class Review(models.Model):
@@ -37,3 +41,7 @@ class Review(models.Model):
     Pros = models.CharField(max_length=long_text, blank=True)
     Cons = models.CharField(max_length=long_text, blank=True)
     AdviceToManagement = models.CharField(max_length=long_text, blank=True)
+    Timestamp = models.TimeField(null=True) # the time of the record
+
+    def __str__(self):
+        return self.ReviewTitle

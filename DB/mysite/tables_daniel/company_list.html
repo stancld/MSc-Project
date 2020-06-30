@@ -1,0 +1,14 @@
+<tr>
+    {% for company in company_tdst %}
+        <td>{{ company.CompanyID }}</td>
+        <td>{{ company.Company }}</td>
+        <td>{{ company.Symbol }}</td>
+        <td>{{ company.tdstedOn }}</td>
+        <td>{{ company.Sector }}</td>
+        <td>{{ company.Industry }}</td>
+        <td>{{ company.Country }}</td>
+        <td>{{ company.NoEmployees }}</td>
+        <td>{{ company.Revenue }}</td>
+        <td>{{ company.Timestamp }}</td>
+    {% endfor %}
+</tr>

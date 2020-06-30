@@ -6,7 +6,6 @@ Description:
 """
 # parameters
 stock_indices = ['S&P 500', 'FTSE 100', 'EURO STOXX 50']
-db_path = '/mnt/c/Data/UCL/@MSc Project/DB/mysite/db.sqlite3'
 
 # import libraries
 import time
@@ -22,7 +21,7 @@ class WikiScraper(object):
     #####################
     ### MAGIC METHODS ###
     #####################
-    def __init__(self, db_path=db_path):
+    def __init__(self):
         """
         """
         self.indexURL = {
@@ -31,9 +30,14 @@ class WikiScraper(object):
             'EURO STOXX 50': 'https://en.wikipedia.org/wiki/EURO_STOXX_50'
         }
 
-        # initialize the connection to the db
-        self.conn = sqlite3.connect(db_path)
-        self.curs = self.conn.cursor()
+        self.schema = [
+            'Company', 'Symbol', 'ListedOn',
+            'Sector', 'Industry', 'Country',
+            'Employees', 'Revenue']
+
+        self.data = pd.DataFrame(
+            columns=self.schema
+        )
 
     #####################
     ## PUBLIC METHODS ###
@@ -47,7 +51,7 @@ class WikiScraper(object):
         assert stock_index in self.indexURL.keys(), "Param stock_index must be from a list ['S&P500', 'FTSE100', 'EURO STOXX 50']"
         self.stock_index = stock_index
 
-        parsedHTML = self._getParsedHTML(stock_index)
+        parsedHTML = self._getParseWikiHTML(stock_index)
         tableRows = self._getTableRows(parsedHTML)
         self.data = self.data.append(
             pd.DataFrame(self._parseRow(row) for row in tableRows)
@@ -58,7 +62,7 @@ class WikiScraper(object):
         A function that scrapes some other company information from Yahoo Finance.
         At this moment, it is expected scrapeWikipedia function is utilized a priori, hence the assert condition.
         """
-        assert self.data.shaoe[0] > 0, "Please, run self.scrapeWikipedia() first!"
+        assert self.data.shape[0] > 0, "Please, run self.scrapeWikipedia() first!"
         for i, companySymbol in enumerate(self.data.Symbol):
             self.data.loc[i, ['Sector', 'Industry', 'Country', 'Employees']] = self._getCompanyProfile(companySymbol)
             time.sleep(0.5)
@@ -71,9 +75,18 @@ class WikiScraper(object):
     def _getCompanyCountry(self, profileContent):
         """
         :param profileContent:
+        Parsing company's country is a bit tricky as it an be located whenever from 1st to 4th row in the react text.
         """
         try:
-            return re.findall(r'<!-- react-text: (\d{1,2}) -->(.+?)<!-- /react-text -->', profileContent)[2][1] #country is third react text
+            i = 0
+            location = re.findall(r'<!-- react-text: (\d{1,2}) -->(.+?)<!-- /react-text -->', profileContent)[i][1] 
+            while ( any( type(self._transformToInt(x))==int for x in re.split(' |-', location) ) ) & ( i<3 ):
+                i+=1
+                try:
+                    location = re.findall(r'<!-- react-text: (\d{1,2}) -->(.+?)<!-- /react-text -->', profileContent)[i][1] 
+                except:
+                    pass
+            return location
         except:
             return str(None)
     
@@ -82,7 +95,7 @@ class WikiScraper(object):
         :param profileContent:
         """
         try:
-            return int(re.sub(',', '', profileContent.findAll('span')[-1].text))
+            return int(re.sub(',', '', re.findall(r'<span data-reactid="(\d{1,2})">(.+?)</span>', profileContent)[-1][1]))
         except:
             return 0
 
@@ -91,16 +104,14 @@ class WikiScraper(object):
         :param profileContent
         """
         try:
-            return profileContent.findAll('span')[-2].text
+            return re.findall(r'data-reactid="(\d{1,2})">(.+?)</span>', profileContent)[-3][1]
         except:
             return str(None)
     
     def _getCompanyProfile(self, symbol):
         """
         """
-        url = f'https://finance.yahoo.com/quote/{symbol}/profile?p={symbol}'
-        websiteHTML = requests.get(url).text
-        parsedHTML = BeautifulSoup(websiteHTML, 'lxml')
+        parsedHTML = self._getParseYahooHTML(symbol, 'profile')
         profileContent = str(parsedHTML.find('div', {'class': 'Mb(25px)'}))
 
         return pd.Series(
@@ -115,21 +126,36 @@ class WikiScraper(object):
     def _getCompanyRevenue(self, symbol):
         """
         """
-        url = f'https://finance.yahoo.com/quote/{symbol}/financials?p={symbol}'
-        websiteHTML = requests.get(url).text
-        parsedHTML = BeautifulSoup(websiteHTML, 'lxml')
-        return 12
+        parsedHTML = self._getParseYahooHTML(symbol, 'financials')
+        try:
+            revenue = self._parseRevenue(parsedHTML)
+            return revenue
+        except:
+            return 0
+        
     
     def _getCompanySector(self, profileContent):
         """
         :param profileContent
         """
         try:
-            return profileContent.findAll('span')[-3].text
+            return re.findall(r'data-reactid="(\d{1,2})">(.+?)</span>', profileContent)[-5][1]
         except:
             return str(None)    
     
-    def _getParsedHTML(self, stock_index):
+    def _getParseYahooHTML(self, symbol, content):
+        """
+        :param symbol:
+        :param content: 
+            supported values: ['profile', financials]
+        """
+        assert content in ['profile', 'financials'], "Param content must be drawn from ['profile', 'financials']."
+        url = f'https://finance.yahoo.com/quote/{symbol}/{content}?p={symbol}'
+        websiteHTML = requests.get(url).text
+        parsedHTML = BeautifulSoup(websiteHTML, 'lxml')
+        return parsedHTML
+
+    def _getParseWikiHTML(self, stock_index):
         """
         :param stock_index:
         """
@@ -148,6 +174,18 @@ class WikiScraper(object):
         
         return table.findAll('tr')[1:] # very first row contains columns names
     
+    def _parseRevenue(self, parsedHTML):
+        """
+        Parsing company's revenue from the table posted on Yahoo Finance is not straightforward hence a single function is dedicated to this task.
+        :param parsedHTML:
+        """
+        financialTable = parsedHTML.find('div', {'class': 'D(tbrg)'})
+        unparsedRevenue = str(financialTable.find_all('div', {'class': 'Ta(c) Py(6px) Bxz(bb) BdB Bdc($seperatorColor) Miw(120px) Miw(140px)--pnclg Bgc($lv1BgColor) fi-row:h_Bgc($hoverBgColor) D(tbc)'})[0])
+        revenue = int(re.sub(
+            ',', '', re.findall(r'<span data-reactid="(\d{1,2})">(.+?)</span>', unparsedRevenue)[0][1]
+        ))
+        return revenue
+    
     def _parseRow(self, row):
         """
         :param row:
@@ -161,7 +199,7 @@ class WikiScraper(object):
                 }
             )
 
-        elif self.stock_index == 'FTSE  100':
+        elif self.stock_index == 'FTSE 100':
             return pd.Series(
                 {
                     'Company': row.findAll('td')[0].text,
@@ -179,28 +217,11 @@ class WikiScraper(object):
                 }
             )
     
-    
-    
-#######################
-##### APPLICATION #####
-#######################
-"""
-wikiScraper = WikiScraper()
-for stock_index in stock_indices:
-    wikiScraper.scrapeWikipedia(stock_index)
-wikiScraper.data
-
-
-websiteHTML = requests.get(self.indexURL[stock_index]).text
-parsedWebsiteHTML = BeautifulSoup(websiteHTML, 'lxml')
-
-url = 'https://finance.yahoo.com/quote/ADS.DE/financials?p=ADS.DE'
-html = requests.get(url).text
-parsedHTML = BeautifulSoup(html, 'lxml')
-text = parsedHTML.find('div', {'class': 'Mb(25px)'})
-str_text = str(text)
-
-text.findAll('span')[-1].text
-
-re.findall(r'<!-- react-text: (\d{1,2}) -->(.+?)<!-- /react-text -->', str_text)[2][1]
-"""
+    def _transformToInt(self, x):
+        """
+        This helper function transforms a given str element to int if possible, otherwise str element is returned.
+        """
+        try:
+            return int(x.strip())
+        except:
+            return x.strip()
