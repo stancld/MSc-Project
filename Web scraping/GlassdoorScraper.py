@@ -31,6 +31,7 @@ class GlassdoorScraper(object):
     #####################
 
     def __init__(self, path_chrome_driver, email, account_type,
+                password = None,
                 review_writer=None,
                 url='https://www.glassdoor.com/Reviews/index.htm',
                 max_age = 2):
@@ -40,6 +41,7 @@ class GlassdoorScraper(object):
         :param email: User email used for a log in to the Glassdoor account, type=str
         :param account_type: an indiciator what type of account should be used for login
             currently supported: ['email', 'gmail']
+        :param password:
         :param review_writer:
         :param url:
         :param max_age:
@@ -50,10 +52,15 @@ class GlassdoorScraper(object):
         )
         self.driver.set_window_size(1440, 1080)
         self.driver.set_window_position(0,0)
+        self.path_chrome_driver=path_chrome_driver
+        
+        # set the time limit after selenium driver should be reopen and a robot should re-log in glassdor
+        self.limit_to_reload = 3*60*60 # 3 hours
         
         # store url, email
         self.url = url
         self.email = email
+        self.password = password
         self.account_type = account_type.lower()
         assert account_type.lower() in ['email', 'gmail'], "Param account_type must be drawn from ['email', 'gmail']."
 
@@ -88,6 +95,26 @@ class GlassdoorScraper(object):
             self.ReviewWriter = review_writer
             self.reviewWriterIsUsed = True
 
+    def __reload__(self, location, url_to_return):
+        """
+        A function that is responsible for the following steps:
+            1. It closes all current windows.
+            2. It re-logs in to Glassdoor
+        This procedure is held in order a robot will not be kicked out of glassdoor.
+        This procedure takes place once a pre-define time limit is exceeded.
+        
+        :param location:
+        :param url_to_return:
+        """
+        self.driver.quit()
+        self.driver = webdriver.Chrome(
+            executable_path=self.path_chrome_driver,
+            options=webdriver.ChromeOptions()
+        )
+        self.driver.set_window_size(1440, 1080)
+        self.driver.set_window_position(0,0)
+        self.getOnReviewsPage(self.company_name, location)
+        self.getURL(url_to_return)
 
     ######################
     ### PUBLIC METHODS ###
@@ -108,8 +135,8 @@ class GlassdoorScraper(object):
             # make self.data to be always an empty list if they are to be written into django db
             self.data = []
         self.company_name = company_name # store company_name
-        # self.getOnReviewsPage(company_name, location) # this stage does not work properly; will be uncommented once login to Glassdoor to be unbugged
-        # self.acceptC  ookies()
+        
+        scraping_startTime = time.time()
         while (self.page <= limit) & (self._isNextPageAvailable()) & (self._newerThanGivenYears()):
             self._clickContinueReading()
             self.getReviews()           
@@ -117,6 +144,10 @@ class GlassdoorScraper(object):
                 [self.parseReview(review) for review in self.reviews]
             )
             self._goNextPage()
+            
+            if (time.time() - scraping_startTime) > self.limit_to_reload:
+                self.__reload__(location=location, url_to_return=self.driver.current_url)
+                scraping_startTime = time.time()
         
         # store the data if they are to be stored in django DB
         if self.reviewWriterIsUsed == True:
@@ -176,25 +207,23 @@ class GlassdoorScraper(object):
         """
         :patam path:
         """
-        if self.reviewWriteIsUsed == True:
+        if self.reviewWriterIsUsed == True:
             print(f'Data cannot be saved to {path} as they have continuosly pushed to django database.')
-        else:
-            pd.DataFrame(
-                self.data,
-                columns=self.schema
-            ).to_csv(path)
+        pd.DataFrame(
+            self.data,
+            columns=self.schema
+        ).to_csv(path)
 
     def saveToExcel(self, path):
         """
         :param path:
         """
-        if self.reviewWriteIsUsed == True:
+        if self.reviewWriterIsUsed == True:
             print(f'Data cannot be saved to {path} as they have continuosly pushed to django database.')
-        else:
-            pd.DataFrame(
-                self.data,
-                columns=self.schema
-            ).to_excel(path)
+        pd.DataFrame(
+            self.data,
+            columns=self.schema
+        ).to_excel(path)
     
     def searchReviews(self, company_name, location):
         """
@@ -244,7 +273,8 @@ class GlassdoorScraper(object):
             'ContractPeriod': self._getContractPeriod(),
             'Pros': self._getReviewBody(element='Pros'),
             'Cons': self._getReviewBody(element='Cons'),
-            'AdviceToManagement': self._getReviewBody(element='Advice to Management')
+            'AdviceToManagement': self._getReviewBody(element='Advice to Management'),
+            'Timestamp': timezone.now()
         }
     
     #######################
@@ -340,13 +370,20 @@ class GlassdoorScraper(object):
         self.driver.find_element_by_id("sc.location").clear()
         self.driver.find_element_by_id("sc.location").send_keys(location)
 
+    def _fillPassword(self):
+        """
+        """
+        if self.password == None:
+            self.driver.find_element_by_xpath('//*[@id="password"]/div[1]/div/div[1]/input').send_keys(input())
+        else:
+            self.driver.find_element_by_xpath('//*[@id="password"]/div[1]/div/div[1]/input').send_keys(self.password)
 
     def _fillPasswordAndClick(self):
         """
         Fill a user password to log in a Glassdoor account. Password is asked to be typed.
         """
         self.driver.find_element_by_xpath('//*[@id="password"]/div[1]/div/div[1]/input').clear()
-        self.driver.find_element_by_xpath('//*[@id="password"]/div[1]/div/div[1]/input').send_keys(input())
+        self._fillPassword()
         self.driver.find_element_by_xpath('//*[@id="passwordNext"]/span/span').click()
 
     def _getEmployeeRelationship(self):
@@ -505,8 +542,16 @@ class GlassdoorScraper(object):
         """
         self.driver.find_element_by_link_text('Sign In').click()
         self.driver.find_element_by_id('userEmail').send_keys(self.email)
-        self.driver.find_element_by_id('userPassword').send_keys(input())
+        self._loginWithEmailFillPassword()
         self.driver.find_element_by_name('submit').click()
+
+    def _loginWithEmailFillPassword(self):
+        """
+        """
+        if self.password == None:
+            self.driver.find_element_by_id('userPassword').send_keys(input())
+        else:
+            self.driver.find_element_by_id('userPassword').send_keys(self.password)
     
     def _loginGoogle(self):
         """
@@ -540,14 +585,14 @@ class GlassdoorScraper(object):
         through while and try&except loop.
         we 
         """
-        if self.data[self.data.Company == self.company_name].shape[0] > 0:
+        if sum(datarow['Company'] == self.company_name for datarow in self.data) > 0:
             last_date = None
             t = 1
             while last_date == None:
                 try:
                     last_date = datetime.datetime.strptime(
                             '-'.join(
-                                [str(self.data.Year.to_list()[-t]), str(self.data.Month.to_list()[-t]), str(self.data.Day.to_list()[-t])]
+                                [str(self.data[-t]['Year']), str(self.data[-t]['Month']), str(self.data[-t]['Day'])]
                                 ), '%Y-%m-%d'
                         ).date()
                     time_delta = (self.current_date - last_date).days / 365
@@ -688,7 +733,7 @@ class GlassdoorScraper(object):
                 Month = datarow['Month'],
                 Day = datarow['Month'],
                 Rating = datarow['Rating'],
-                JobTitle = datarow['JobTitle']
+                JobTitle = datarow['JobTitle'],
                 EmployeeRelationship = datarow['EmployeeRelationship'],
                 Location = datarow['Location'],
                 Recommendation = datarow['Recommendation'],
@@ -699,9 +744,8 @@ class GlassdoorScraper(object):
                 Pros = datarow['Pros'],
                 Cons = datarow['Cons'],
                 AdviceToManagement = datarow['AdviceToManagement'],
-                Timestamp = timezone.now()
+                Timestamp = datarow['Timestamp']
             )
             reviewRecord.save()
-
         except Exception as e:
             print(e)

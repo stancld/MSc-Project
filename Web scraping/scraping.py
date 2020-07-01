@@ -17,16 +17,17 @@ from GlassdoorScraper import GlassdoorScraper
 #######################
 ##### APPLICATION #####
 #######################
-
-# application (still needs to be automated in scrape module)
 if __name__=='__main__':
-    from Scraper_setup import *
+    from Scraper_setup import path_chrome_driver, url, email, password, account_type, location
+    
     exec(open('set_django_db.py').read())
+    
     from tables_daniel.models import Review
 
-    scraper = GlassdoorScraper(path_chrome_driver, email, account_type='email', review_writer=Review)
-    companies = ['Facebook', 'Apple', 'Microsoft Corporation']
+    companies = ['Facebook', 'Apple']
 
+    scraper = GlassdoorScraper(path_chrome_driver, email, account_type='email', password=password, review_writer=Review)
+    
     for company_name in companies:
         scraper.getOnReviewsPage( 
             company_name=company_name,

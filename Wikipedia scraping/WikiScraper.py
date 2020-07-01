@@ -178,13 +178,17 @@ class WikiScraper(object):
         While & try/except loop is required as sometimes an access to webpage might be denied.
         :param symbol: stock symbol of a company that is used for completing url address on Yahoo Finance; type=str
         """
-        isSuccess = False
-        while isSuccess == False:
+        isSuccess, fails = False, 0
+        while (isSuccess == False) & (fails < 20):
             try:
                 parsedHTML = self._getParseYahooHTML(symbol, 'profile')
                 isSuccess = True
             except:
-                time.sleep(1)
+                fails+=1
+                if fails % 5 == 0:
+                    time.sleep(60)
+                else:
+                    time.sleep(1)
         profileContent = str(parsedHTML.find('div', {'class': 'Mb(25px)'}))
         
         return {
@@ -200,13 +204,17 @@ class WikiScraper(object):
         While & try/except loop is required as sometimes an access to webpage might be denied.
         :param symbol: stock symbol of a company that is used for completing url address on Yahoo Finance; type=str
         """
-        isSuccess = False
-        while isSuccess == False:
+        isSuccess, fails = False, 0
+        while (isSuccess == False) & (fails < 20):
             try:
                 parsedHTML = self._getParseYahooHTML(symbol, 'financials')
                 isSuccess = True
             except:
-                time.sleep(1)
+                fails+=1
+                if fails % 5 == 0:
+                    time.sleep(60)
+                else:
+                    time.sleep(1)
         try:
             revenue = self._parseRevenue(parsedHTML)
             return {'Revenue': revenue}
