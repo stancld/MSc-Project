@@ -4,8 +4,6 @@ url = 'https://www.glassdoor.com/Reviews/index.htm'
 
 # set some user parameters
 account_type = 'email'
-email = 'daniel.stancl.19@ucl.ac.uk'
-password = 'murkyM3mory35@'
 
 location = 'London'
 
