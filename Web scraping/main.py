@@ -17,7 +17,7 @@ from GlassdoorScraper import GlassdoorScraper
 #######################
 ##### APPLICATION #####
 #######################
-if __name__=='__main__':
+def main():
     from Scraper_setup import path_chrome_driver, url, email, password, account_type, location
     
     exec(open('set_django_db.py').read())
@@ -38,3 +38,6 @@ if __name__=='__main__':
             company_name=company_name,
             location=location,
         )
+
+if __name__=='__main__':
+    main()

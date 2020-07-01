@@ -1,16 +1,17 @@
-"""
-"""
 # import and setup path 
 import os
 import sys
 import django
+from argparse import ArgumentParser
 
-if __name__=="__main__":
+def set_django_db(mysite_path):
+    """
+    :param mysite_path:
+    """
     cwd = os.getcwd()
-    mysite_path = '/mnt/c/Data/UCL/@MSc Project/DB/mysite/'
 
-    sys.path.append('/mnt/c/Data/UCL/@MSc Project/DB/mysite/')
-    sys.path.append('/mnt/c/Data/UCL/@MSc Project/DB/mysite/tables_daniel/')
+    sys.path.append(mysite_path) # add path to djnago mysite
+    sys.path.append(mysite_path + 'tables_daniel/') # add path to django app
 
     try:
         os.chdir(mysite_path)
@@ -21,3 +22,4 @@ if __name__=="__main__":
         os.chdir(cwd)
     except Exception as e:
         print(e)
+    
