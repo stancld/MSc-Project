@@ -1,10 +1,10 @@
 # Employee Sentiment Analysis for ESG Investing (MSc Project)
 
-**Author: Daniel Stancl
-University: UCL
-Program: MSc Computational Statistics and Machine Learning
-Supervisor: Prof Philip Treleaven
-Industry Partner: Fidelity International
+**Author: Daniel Stancl\\
+University: UCL\\
+Program: MSc Computational Statistics and Machine Learning\\
+Supervisor: Prof Philip Treleaven\\
+Industry Partner: Fidelity International\\
 Academic year: 2019/2020**
 
 <hr>
