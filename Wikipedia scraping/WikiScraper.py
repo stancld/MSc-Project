@@ -98,6 +98,23 @@ class WikiScraper(object):
             if (i+1)%20==0:
                 print(f'{i+1:.0f} companies out of {len(self.data):.0f} scraped from Yahoo.')
 
+    def save(self, path):
+        """
+        Function saving the scraped data into a csv/xlsx file depending on the file format.
+        :param path: absolute path of a stored file; type=str
+        """
+        if path.split('.')[-1] == 'csv':
+            self.saveToCSV(path)
+        
+        elif path.split('.')[-1] == 'xlsx':
+            self.saveToExcel(path)
+        
+        else:
+            raise Exception(
+                'The output file can be saved only as either csv or xlsx file!\
+                    Please check the output_path you specified.'
+            )
+    
     def saveToCSV(self, path):
         """
         Function saving the scraped data into a csv file.
