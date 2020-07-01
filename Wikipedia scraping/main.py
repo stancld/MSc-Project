@@ -42,6 +42,11 @@ if (args.use_django_db) & (args.output_path != None):
         'use_django_db=True and output_path!=None is not compatible\
             because output_path is used iff use_django_db=False.'
     )
+if (not args.use_django_db) & (args.output_path == None):
+    raise Exception(
+        'use_django_db=False and output_path==None is not compatible\
+            because output_path has no default value while must be specified.'
+    )
 
 #######################
 ##### APPLICATION #####
