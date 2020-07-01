@@ -35,9 +35,6 @@ class GlassdoorScraper(object):
         """
         Instantiate method handling all the necessary setting.
         :param path_chrome_drive: An absolute path to a ChromeDriver.
-        :param account_type: There are multiple ways how to access Glassdoor acount.
-            Hence, account_type is an indiciator what type of account should be used for login.
-            currently supported: ['email', 'gmail'] 
         :param email: Email used for log in to the Glassdoor account; type=str
         :param password: Password used for log in to the Glassdoor account; type=str
         :param headless_browsing: If True, `headless` browsing is to be used.
@@ -71,8 +68,6 @@ class GlassdoorScraper(object):
         self.url = url
         self.email = email
         self.password = password
-        self.account_type = account_type.lower()
-        assert account_type.lower() in ['email', 'gmail'], "Param account_type must be drawn from ['email', 'gmail']."
 
         # Instantiate empty dataframe for storing reviews
         self.schema = [
@@ -182,22 +177,20 @@ class GlassdoorScraper(object):
         :param company_name: type=str
         :param location:
         """
+        try:
+            self.sign_in()
+            time.sleep(3)
+        except:
+            time.sleep(2)
+
         self.company_name = company_name
         self.getURL(self.url)
         self.searchReviews(company_name, location)
         if self._isNotUniqueSearchResult():
             self._selectFirstCompany()
         self._clickReviewsButton()
-        time.sleep(5)
-        if self._loginRequired():
-            if self.account_type == 'gmail':
-                self._loginGoogle()
-                time.sleep(20)
-            elif self.account_type == 'email':
-                self._loginWithEmail()
-                time.sleep(5)
-        else:
-            time.sleep(2)
+        time.sleep(2)
+
         self._sortReviewsMostRecent()
         
     def getURL(self, url):
@@ -260,6 +253,16 @@ class GlassdoorScraper(object):
         time.sleep(1)
 
     def sign_in(self):
+        """
+        """
+        login_url='https://www.glassdoor.com/profile/login_input.htm'
+        self.getURL(login_url)
+        
+        self.driver.find_element_by_name('username').send_keys(self.email)
+        self.driver.find_element_by_name('password').send_keys(self.password)
+        self.driver.find_element_by_xpath('//button[@type="submit"]').click()
+
+        print('Login was successful.')
     
     def parseReview(self, review):
         """
@@ -551,43 +554,6 @@ class GlassdoorScraper(object):
         This is an identifier of such an occasion.
         """
         return len(self.driver.find_elements_by_id('SearchResults')) != 0
-
-    def _loginWithEmail(self):
-        """
-        A module capable to log in to user's Glassdoor account via E-mail.
-        """
-        self.driver.find_element_by_link_text('Sign In').click()
-        self.driver.find_element_by_id('userEmail').send_keys(self.email)
-        self._loginWithEmailFillPassword()
-        self.driver.find_element_by_name('submit').click()
-        print('Login was successful.')
-
-    def _loginWithEmailFillPassword(self):
-        """
-        """
-        if self.password == None:
-            self.driver.find_element_by_id('userPassword').send_keys(input())
-        else:
-            self.driver.find_element_by_id('userPassword').send_keys(self.password)
-    
-    def _loginGoogle(self):
-        """
-        A module capable to log in to user's Google account connected with to a Glassdoor account.
-        All the operations from clicking on the button, switching windows to filling user's details
-        are handled within this single function.
-        """
-        self.driver.find_element_by_xpath('//*[@id="HardsellOverlay"]/div/div/div/div/div/div/div/div[1]/div[1]/div/div[2]/button').click()
-        time.sleep(0.5)
-        self.driver.switch_to.window(self.driver.window_handles[1])
-        self._fillEmailAndClick(self.email)
-        time.sleep(3)
-        try:
-            print('Type your password.')
-            self._fillPasswordAndClick()
-        except:
-            print('Mobile verification is required.')
-        self.driver.switch_to.window(self.driver.window_handles[0])
-        print('Login was successful.')
 
     def _loginRequired(self):
         """

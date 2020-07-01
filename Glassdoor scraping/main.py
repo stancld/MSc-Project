@@ -26,13 +26,6 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    '--account_type',
-    default='email',
-    help="An indication which type of account is used for log in to the Glassdoor portal.\
-        Currently supported: `['email', 'gmail']`"
-)
-
-parser.add_argument(
     '--email',
     help='Email used for log in to the Glassdoor account'
 )
