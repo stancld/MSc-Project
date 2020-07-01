@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 
 def set_django_db(mysite_path):
     """
-    :param mysite_path:
+    :param mysite_path: an absolute path to django app (outter mysite folder); type=str
     """
     cwd = os.getcwd()
 

@@ -17,7 +17,8 @@ parser.add_argument(
 
 parser.add_argument(
     '--use_django_db',
-    default=True,
+    default='store_false',
+    action='store_true',
     help='An indication whether scraped data should be stored at django DB.\
         If `False` is passed, the data are stored as a csv/xlsx file. '
 )
