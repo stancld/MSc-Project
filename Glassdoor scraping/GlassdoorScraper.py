@@ -1,8 +1,6 @@
 """
 File: GlassdoorScraper.py
 Author: Daniel Stancl
-
-Description:
 """
 
 # import libraries
@@ -24,36 +22,51 @@ from selenium.webdriver.common.keys import Keys
 # import hyperparameters
 from Scraper_setup import *
 
+webdriver.ChromeOptions()
+
 class GlassdoorScraper(object):
     """
+    The major purpose of this class is to scrape reviews from Glassdoor.
+    As such, all actions which are necessary during the browsing of the web are defined throughout this class.
+    Subsequently, this class can save the data either as csv/xlsx file using pandas, or the data can be sent to django dataabse.
     """
     #####################
     ### MAGIC METHODS ###
     #####################
 
-    def __init__(self, path_chrome_driver, email, account_type,
-                password = None,
+    def __init__(self, chrome_driver_path, account_type, email, password,
+                headless_browsing,
                 review_writer=None,
-                url='https://www.glassdoor.com/Reviews/index.htm',
-                max_age = 2):
+                max_review_age = 2,
+                url='https://www.glassdoor.com/Reviews/index.htm'):
         """
-        Instantiate method.
-        :param path_chrome_drive: 
-        :param email: User email used for a log in to the Glassdoor account, type=str
-        :param account_type: an indiciator what type of account should be used for login
-            currently supported: ['email', 'gmail']
-        :param password:
+        Instantiate method handling all the necessary setting.
+        :param path_chrome_drive: An absolute path to a ChromeDriver.
+        :param account_type: There are multiple ways how to access Glassdoor acount.
+            Hence, account_type is an indiciator what type of account should be used for login.
+            currently supported: ['email', 'gmail'] 
+        :param email: Email used for log in to the Glassdoor account; type=str
+        :param password: Password used for log in to the Glassdoor account; type=str
+        :param headless_browsing: If True, `headless` browsing is to be used.
         :param review_writer:
+        :param max_review_age:
         :param url:
-        :param max_age:
         """
+        # configure driver & chromeoptions
+        self.chrome_driver_path=chrome_driver_path
+        self.chrome_options = webdriver.ChromeOptions()
+        if headless_browsing:
+            self.chrome_options.add_argument('--headless')
+            self.chrome_options.add_argument('--disable-gpu')
+        
         self.driver = webdriver.Chrome(
-            executable_path=path_chrome_driver,
-            options=webdriver.ChromeOptions()
+            executable_path=chrome_driver_path,
+            options=self.chrome_options
         )
-        self.driver.set_window_size(1440, 1080)
-        self.driver.set_window_position(0,0)
-        self.path_chrome_driver=path_chrome_driver
+
+        if (not headless_browsing):
+            self.driver.set_window_size(1440, 1080)
+            self.driver.set_window_position(0,0)
         
         # set the time limit after selenium driver should be reopen and a robot should re-log in glassdor
         self.limit_to_reload = 3*60*60 # 3 hours
@@ -109,7 +122,7 @@ class GlassdoorScraper(object):
         """
         self.driver.quit()
         self.driver = webdriver.Chrome(
-            executable_path=self.path_chrome_driver,
+            executable_path=self.chrome_driver_path,
             options=webdriver.ChromeOptions()
         )
         self.driver.set_window_size(1440, 1080)

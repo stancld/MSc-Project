@@ -5,47 +5,41 @@ from argparse import ArgumentParser
 from WikiScraper import *
 from set_django_db import set_django_db
 
-# parameters
+# parameters/arguments
 parser = ArgumentParser()
 
 parser.add_argument(
     '--stock_indices',
     default=['S&P 500', 'FTSE 100', 'EURO STOXX 50'],
-    help="Pass a list of stock indices you would like to scrape.\
-        Currently supported are: `['S&P 500', 'FTSE 100', 'EURO STOXX 50']`."
-)
-
-parser.add_argument(
-    '--use_django_db',
-    default='store_false',
-    action='store_true',
-    help='An indication whether scraped data should be stored at django DB.\
-        If `False` is passed, the data are stored as a csv/xlsx file. '
+    help="A list of stock indices that should be scraped.\
+        Currently supported: `['S&P 500', 'FTSE 100', 'EURO STOXX 50']`."
 )
 
 parser.add_argument(
     '--mysite_path',
     default='/mnt/c/Data/UCL/@MSc Project/DB/mysite/',
-    help='An absolute path to a Django app.'
+    help='An absolute path to the django application containing models for the DB.\
+        This is required iff use_django_db is passed in.'
 )
 
 parser.add_argument(
     '--output_path',
     default=None,
-    help='A path of an output file if `use_django_db==False`'
+    help='An absolute path of the output csv/xlsx file storing the scraped data.\
+        This is required iff use_django_db is not passed in.'
 )
 
 args = parser.parse_args()
 
 # sanity checks
-if (args.use_django_db) & (args.output_path != None):
+if (args.mysite_path) & (args.output_path):
     raise Exception(
-        'use_django_db=True and output_path!=None is not compatible\
-            because output_path is used iff use_django_db=False.'
+        'mysite_path!=None and output_path!=None is not compatible\
+            because output_path is used iff mysite_path=None.'
     )
-if (not args.use_django_db) & (args.output_path == None):
+if (not args.mysite_path) & (not args.output_path):
     raise Exception(
-        'use_django_db=False and output_path==None is not compatible\
+        'mysite_path==None and output_path==None is not compatible\
             because output_path has no default value while must be specified.'
     )
 
@@ -53,7 +47,7 @@ if (not args.use_django_db) & (args.output_path == None):
 ##### APPLICATION #####
 #######################
 def main(): 
-    if args.use_django_db == True:
+    if args.mysite_path :
         # import Company - django.db.models.Model
         set_django_db(mysite_path=args.mysite_path)
         from tables_daniel.models import Company

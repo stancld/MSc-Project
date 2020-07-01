@@ -23,3 +23,7 @@ def set_django_db(mysite_path):
     except Exception as e:
         print(e)
     
+def a(x='Hey'):
+    b(x)
+    def b(x):
+        print(x)
