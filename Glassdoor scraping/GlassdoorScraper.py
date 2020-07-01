@@ -30,7 +30,7 @@ class GlassdoorScraper(object):
     ### MAGIC METHODS ###
     #####################
 
-    def __init__(self, chrome_driver_path, account_type, email, password,
+    def __init__(self, chrome_driver_path, email, password,
                 headless_browsing, review_writer, max_review_age, url):
         """
         Instantiate method handling all the necessary setting.
@@ -51,6 +51,9 @@ class GlassdoorScraper(object):
         if headless_browsing:
             self.chrome_options.add_argument('--headless')
             self.chrome_options.add_argument('--disable-gpu')
+            self.chrome_options.add_argument("--no-sandbox")
+            self.chrome_options.add_argument('window-size=1440,1080')
+            self.chrome_options.add_argument('--enable-features=AllowSyncXHRInPageDismissal')
         
         self.driver = webdriver.Chrome(
             executable_path=chrome_driver_path,
@@ -156,7 +159,9 @@ class GlassdoorScraper(object):
                 self.__reload__(location=location, url_to_return=self.driver.current_url)
                 scraping_startTime = time.time()
             t = time.time() - scraping_startTime
-            print(self.page, t)
+            print(
+                f"Page {self.page} reached after {t:.2f} seconds after the most recent login."
+            )
         
         # store the data if they are to be stored in django DB
         if self.reviewWriterIsUsed == True:
@@ -177,11 +182,8 @@ class GlassdoorScraper(object):
         :param company_name: type=str
         :param location:
         """
-        try:
-            self.sign_in()
-            time.sleep(3)
-        except:
-            time.sleep(2)
+        self.sign_in()
+        time.sleep(2)
 
         self.company_name = company_name
         self.getURL(self.url)
@@ -258,11 +260,16 @@ class GlassdoorScraper(object):
         login_url='https://www.glassdoor.com/profile/login_input.htm'
         self.getURL(login_url)
         
-        self.driver.find_element_by_name('username').send_keys(self.email)
-        self.driver.find_element_by_name('password').send_keys(self.password)
-        self.driver.find_element_by_xpath('//button[@type="submit"]').click()
-
-        print('Login was successful.')
+        if self._isLoginRequired():
+            try:
+                self.driver.find_element_by_name('username').send_keys(self.email)
+                self.driver.find_element_by_name('password').send_keys(self.password)
+                self.driver.find_element_by_xpath('//button[@type="submit"]').click()
+                print('Login was successful.')
+            except:
+                print('Login was NOT successful.')
+        else:
+            pass
     
     def parseReview(self, review):
         """
@@ -538,6 +545,11 @@ class GlassdoorScraper(object):
         self.getURL(next_url)
         self.page += 1
         time.sleep(2)
+
+    def _isLoginRequired(self):
+        """
+        """
+        return len(self.driver.find_elements_by_name('username')) > 0
 
     def _isNextPageAvailable(self):
         """

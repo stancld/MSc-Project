@@ -106,29 +106,18 @@ def main():
         # import Company - django.db.models.Model
         set_django_db(mysite_path=args.mysite_path)
         from tables_daniel.models import Review
-
-        scraper = GlassdoorScraper(
-            chrome_driver_path=args.chrome_driver_path,
-            account_type=args.account_type,
-            email=args.email,
-            password=args.password,
-            headless_browsing=args.headless,
-            review_writer=Review,
-            max_review_age=args.max_review_age,
-            url=args.url
-        )
-    
     else:
-        scraper = GlassdoorScraper(
-            chrome_driver_path=args.chrome_driver_path,
-            account_type=args.account_type,
-            email=args.email,
-            password=args.password,
-            headless_browsing=args.headless,
-            review_writer=None,
-            max_review_age=args.max_review_age,
-            url=args.url
-        )
+        Review = None
+
+    scraper = GlassdoorScraper(
+        chrome_driver_path=args.chrome_driver_path,
+        email=args.email,
+        password=args.password,
+        headless_browsing=args.headless,
+        review_writer=Review,
+        max_review_age=args.max_review_age,
+        url=args.url
+    )
     
     for company_name in companies:
         scraper.getOnReviewsPage( 
