@@ -1,9 +1,9 @@
 # Employee Sentiment Analysis for ESG Investing (MSc Project)
 
-## Author: Daniel Stancl
-## University: UCL
-## Supervisor: Prof Philip Treleaven
-## Industry Partner: Fidelity International
+### Author: Daniel Stancl
+### University: UCL
+### Supervisor: Prof Philip Treleaven
+### Industry Partner: Fidelity International
 
 <hr>
 
