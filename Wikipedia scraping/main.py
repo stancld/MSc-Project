@@ -24,7 +24,6 @@ parser.add_argument(
 
 parser.add_argument(
     '--output_path',
-    default=None,
     help='An absolute path of the output csv/xlsx file storing the scraped data.\
         This is required iff mysite_path is not passed in.'
 )

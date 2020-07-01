@@ -2,7 +2,6 @@
 import os
 import sys
 import django
-from argparse import ArgumentParser
 
 def set_django_db(mysite_path):
     """
@@ -22,8 +21,3 @@ def set_django_db(mysite_path):
         os.chdir(cwd)
     except Exception as e:
         print(e)
-    
-def a(x='Hey'):
-    b(x)
-    def b(x):
-        print(x)

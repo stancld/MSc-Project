@@ -19,11 +19,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
-# import hyperparameters
-from Scraper_setup import *
-
-webdriver.ChromeOptions()
-
+## CLASS
 class GlassdoorScraper(object):
     """
     The major purpose of this class is to scrape reviews from Glassdoor.
@@ -35,10 +31,7 @@ class GlassdoorScraper(object):
     #####################
 
     def __init__(self, chrome_driver_path, account_type, email, password,
-                headless_browsing,
-                review_writer=None,
-                max_review_age = 2,
-                url='https://www.glassdoor.com/Reviews/index.htm'):
+                headless_browsing, review_writer, max_review_age, url):
         """
         Instantiate method handling all the necessary setting.
         :param path_chrome_drive: An absolute path to a ChromeDriver.
@@ -49,12 +42,15 @@ class GlassdoorScraper(object):
         :param password: Password used for log in to the Glassdoor account; type=str
         :param headless_browsing: If True, `headless` browsing is to be used.
         :param review_writer:
-        :param max_review_age:
-        :param url:
+            This django Model base that is used for writing and storing the data in a given database;
+            type=django.db.models.base.ModelBase
+        :param max_review_age: An indication how old reviews are to be scraped; type=int|float
+        :param url: A URL to the review page of Glassdoor webpages; type=str
         """
         # configure driver & chromeoptions
         self.chrome_driver_path=chrome_driver_path
         self.chrome_options = webdriver.ChromeOptions()
+        self.headless_browsing = headless_browsing
         if headless_browsing:
             self.chrome_options.add_argument('--headless')
             self.chrome_options.add_argument('--disable-gpu')
@@ -99,12 +95,12 @@ class GlassdoorScraper(object):
 
         # get current date so that scraping can be stop w.r.t. date
         self.current_date = date.today()
-        self.max_age = max_age # how old reviews might be
+        self.max_review_age = max_review_age # how old reviews might be
 
         # sanity checks
         assert type(email)==str, 'Param email must be a type of str'
 
-        if review_writer != None:
+        if review_writer:
             assert type(review_writer) == django.db.models.base.ModelBase, 'param CompanyWritert must be of type django.db.models.base.ModelBase!'
             self.ReviewWriter = review_writer
             self.reviewWriterIsUsed = True
@@ -123,10 +119,12 @@ class GlassdoorScraper(object):
         self.driver.quit()
         self.driver = webdriver.Chrome(
             executable_path=self.chrome_driver_path,
-            options=webdriver.ChromeOptions()
+            options=self.chrome_options
         )
-        self.driver.set_window_size(1440, 1080)
-        self.driver.set_window_position(0,0)
+        if (not self.headless_browsing):
+            self.driver.set_window_size(1440, 1080)
+            self.driver.set_window_position(0,0)
+        
         self.getOnReviewsPage(self.company_name, location)
         self.getURL(url_to_return)
 
@@ -162,6 +160,8 @@ class GlassdoorScraper(object):
             if (time.time() - scraping_startTime) > self.limit_to_reload:
                 self.__reload__(location=location, url_to_return=self.driver.current_url)
                 scraping_startTime = time.time()
+            t = time.time() - scraping_startTime
+            print(self.page, t)
         
         # store the data if they are to be stored in django DB
         if self.reviewWriterIsUsed == True:
@@ -258,6 +258,8 @@ class GlassdoorScraper(object):
             self._clickSearchButtonSecondary()
         self.page = 1
         time.sleep(1)
+
+    def sign_in(self):
     
     def parseReview(self, review):
         """
@@ -558,6 +560,7 @@ class GlassdoorScraper(object):
         self.driver.find_element_by_id('userEmail').send_keys(self.email)
         self._loginWithEmailFillPassword()
         self.driver.find_element_by_name('submit').click()
+        print('Login was successful.')
 
     def _loginWithEmailFillPassword(self):
         """
@@ -577,13 +580,14 @@ class GlassdoorScraper(object):
         time.sleep(0.5)
         self.driver.switch_to.window(self.driver.window_handles[1])
         self._fillEmailAndClick(self.email)
-        time.sleep(3.5)
+        time.sleep(3)
         try:
             print('Type your password.')
             self._fillPasswordAndClick()
         except:
             print('Mobile verification is required.')
         self.driver.switch_to.window(self.driver.window_handles[0])
+        print('Login was successful.')
 
     def _loginRequired(self):
         """
@@ -612,7 +616,7 @@ class GlassdoorScraper(object):
                     time_delta = (self.current_date - last_date).days / 365
                 except:
                     t += 1
-            return time_delta < self.max_age
+            return time_delta < self.max_review_age
         else:
             return True
     

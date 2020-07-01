@@ -14,6 +14,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from GlassdoorScraper import GlassdoorScraper
+from set_django_db import set_django_db
 
 # parameters/arguments
 parser = ArgumentParser()
@@ -23,34 +24,71 @@ parser.add_argument(
     default='/mnt/c/Data/UCL/@MSC Project - Data and sources/chromedriver.exe',
     help='An absolute path to the ChromeDriver that is necessary for web scraping.'
 )
+
 parser.add_argument(
     '--account_type',
     default='email',
     help="An indication which type of account is used for log in to the Glassdoor portal.\
         Currently supported: `['email', 'gmail']`"
 )
+
 parser.add_argument(
     '--email',
     help='Email used for log in to the Glassdoor account'
 )
+
 parser.add_argument(
     '-p', '--password',
     help='Password used for log in to the Glassdoor account'
 )
+
 parser.add_argument(
-    'c', '--credentials',
+    '-c', '--credentials',
+    default='/mnt/c/Data/UCL/@MSc Project - Data and sources/credentials.json',
     help='Path to credential file containing email and password\
         used for lod in to the Glassdoor account.'
 )
+
 parser.add_argument(
     '--headless',
-    default='store_false',
     action='store_true',
     help='If --headless is passed in, the `headless` browsing is used.'
 )
 
+parser.add_argument(
+    '--max_review_age',
+    default=2,
+    help='An indication how old reviews are to be scraped'
+)
+
+parser.add_argument(
+    '-u', '--url',
+    default='https://www.glassdoor.com/Reviews/index.htm',
+    help='A URL to the review page of Glassdoor webpages'
+)
+
+parser.add_argument(
+    '--location',
+    default='London',
+    help='A location we are interested in'
+)
+
+parser.add_argument(
+    '--mysite_path',
+    default='/mnt/c/Data/UCL/@MSc Project/DB/mysite/',
+    help='An absolute path to the django application containing models for the DB.\
+        This is required iff output_path is not passed in.'
+)
+
+parser.add_argument(
+    '--output_path',
+    help='An absolute path of the output csv/xlsx file storing the scraped data.\
+        This is required iff mysite_path is not passed in.'
+)
+
 args = parser.parse_args()
 
+# sanity checks
 if args.credentials:
     try:
         with open(args.credentials) as f:
@@ -66,34 +104,48 @@ else:
         raise Exception('Neiter filepath to the credentials, nor email and password are specified.\
             Please, provide either path to the fiel with credentials or email/password directly to cmd.')
 
+companies = ['Intel Corporation']
 #######################
 ##### APPLICATION #####
 #######################
 def main():
-    from Scraper_setup import path_chrome_driver, url, email, password, account_type, location
+    if args.mysite_path :
+        # import Company - django.db.models.Model
+        set_django_db(mysite_path=args.mysite_path)
+        from tables_daniel.models import Review
+
+        scraper = GlassdoorScraper(
+            chrome_driver_path=args.chrome_driver_path,
+            account_type=args.account_type,
+            email=args.email,
+            password=args.password,
+            headless_browsing=args.headless,
+            review_writer=Review,
+            max_review_age=args.max_review_age,
+            url=args.url
+        )
     
-    exec(open('set_django_db.py').read())
-    from tables_daniel.models import Review
-
-    companies = ['Facebook', 'Apple']
-
-    scraper = GlassdoorScraper(
-        chrome_driver_path=arg.chrome_driver_path,
-        account_type=args.account_type,
-        email=args.email,
-        password=args.password
-
-        path_chrome_driver, email, account_type='email', password=password, review_writer=Review)
+    else:
+        scraper = GlassdoorScraper(
+            chrome_driver_path=args.chrome_driver_path,
+            account_type=args.account_type,
+            email=args.email,
+            password=args.password,
+            headless_browsing=args.headless,
+            review_writer=None,
+            max_review_age=args.max_review_age,
+            url=args.url
+        )
     
     for company_name in companies:
         scraper.getOnReviewsPage( 
             company_name=company_name,
-            location=location    
+            location=args.location    
         )
         scraper.acceptCookies()
         scraper.scrape(
             company_name=company_name,
-            location=location,
+            location=args.location,
         )
 
 if __name__=='__main__':
