@@ -24,18 +24,17 @@ The aim of this industry-based project, conducted in a cooperation with Fidelity
 ## Usage of scraper tools
 #### 1. Wikipedia & Yahoo Scraper
 ```
-usage: main.py [-h] [--stock_indices STOCK_INDICES] [--use_django_db USE_DJANGO_DB]
+usage: main.py [-h] [--stock_indices STOCK_INDICES]
                [--mysite_path MYSITE_PATH] [--output_path OUTPUT_PATH]
 
 optional arguments:
   -h --help                         Show this help message and exit.
   --stock_indices STOCK_INDICES     A list of stock indices that should be scraped.
                                     Currently supported: ['S&P 500, 'FTSE 100', 'EURO STOXX 50']
-  --use_django_db USE_DJANGO_DB     A boolean indiciation whether the data should be stored in django DB.
   --mysite_path MYSITE_PATH         An absolute path to the django application containing models for the DB.
-                                    This is required iff use_django_db is passed in.
+                                    This is required iff output_path is not passed in.
   --output_path OUTPUT_PATH         An absolute path of the output csv/xlsx file storing the scraped data.
-                                    This is required iff use_django_db is not passed in.
+                                    This is required iff mysite_path is not passed in.
 ```
 **Examples**
 1. *Running the script with django db.*
