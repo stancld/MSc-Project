@@ -12,6 +12,13 @@
 ## Description of MSc Project
 The aim of this industry-based project, conducted in a cooperation with Fidelity International, is to create a regularly refreshed database (implemented in Django) containing employee reviews listed on Glassdoor.com (scraped with Selenium). Subsequently, the sentiment of the reviews are to be scored with pre-trained language models and the results are to be incorporated into the multi-factor credit scoring model as a part of ESG investing framework.
 
+## Disclaimer
+Scraping the content from Wikipedia and Yahoo webpages is forbidden by their Terms of Service. While it is unlikely to be banned from this websites, please, use the scraper wisely, and even better with an express written permission of representatives of given webpages.
+
+Scraping the content from Glassdoor webpages is forbidden by their Terms of Use, section 3B (Using Glassdoor - House Rules). As such, please do not use this scraper without their express written permission. Furthermore, I do not claim responsibility for banning your Glassdoor account should the scraper be used too heavily. Moreover, should I be connacted by a representative of Glassdoor to remove this repo/make this repo private, I will do so.
+
+Please if any, use all the tools wisely.
+
 ## Description of the functionality of scraper tools
 
 ## Installation of scraper tools
