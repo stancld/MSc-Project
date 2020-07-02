@@ -22,7 +22,7 @@ parser = ArgumentParser()
 parser.add_argument(
     '--chrome_driver_path',
     default='/mnt/c/Data/UCL/@MSC Project - Data and sources/chromedriver.exe',
-    help='An absolute path to the ChromeDriver that is necessary for web scraping.'
+    help='An absolute path to the ChromeDriver.'
 )
 
 parser.add_argument(
@@ -33,31 +33,25 @@ parser.add_argument(
 
 parser.add_argument(
     '--email',
-    help='Email used for log in to the Glassdoor account'
+    help='Email used for log in to the Glassdoor account.'
 )
 
 parser.add_argument(
     '-p', '--password',
-    help='Password used for log in to the Glassdoor account'
+    help='Password used for log in to the Glassdoor account.'
 )
 
 parser.add_argument(
     '-c', '--credentials',
     default='/mnt/c/Data/UCL/@MSc Project - Data and sources/credentials.json',
     help='Path to credential file containing email and password\
-        used for lod in to the Glassdoor account.'
+        used for log in to the Glassdoor account.'
 )
 
 parser.add_argument(
     '--max_review_age',
     default=2,
-    help='An indication how old reviews are to be scraped'
-)
-
-parser.add_argument(
-    '-u', '--url',
-    default='https://www.glassdoor.com/Reviews/index.htm',
-    help='A URL to the review page of Glassdoor webpages'
+    help='An indication how old reviews are to be scraped.'
 )
 
 parser.add_argument(
@@ -129,7 +123,6 @@ def main():
         headless_browsing=args.headless,
         review_writer=Review,
         max_review_age=args.max_review_age,
-        url=args.url
     )
     
     for company_name in companies:

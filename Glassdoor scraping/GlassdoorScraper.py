@@ -31,7 +31,7 @@ class GlassdoorScraper(object):
     #####################
 
     def __init__(self, chrome_driver_path, email, password,
-                headless_browsing, review_writer, max_review_age, url):
+                headless_browsing, review_writer, max_review_age):
         """
         Instantiate method handling all the necessary setting.
         :param path_chrome_drive: An absolute path to a ChromeDriver.
@@ -42,7 +42,6 @@ class GlassdoorScraper(object):
             This django Model base that is used for writing and storing the data in a given database;
             type=django.db.models.base.ModelBase
         :param max_review_age: An indication how old reviews are to be scraped; type=int|float
-        :param url: A URL to the review page of Glassdoor webpages; type=str
         """
         # configure driver & chromeoptions
         self.chrome_driver_path=chrome_driver_path
@@ -67,8 +66,9 @@ class GlassdoorScraper(object):
         # set the time limit after selenium driver should be reopen and a robot should re-log in glassdor
         self.limit_to_reload = 3*60*60 # 3 hours
         
-        # store url, email
-        self.url = url
+        # store url to the glassdor reviews main page
+        self.url = 'https://www.glassdoor.com/Reviews/index.htm'
+        # store email & password
         self.email = email
         self.password = password
 
