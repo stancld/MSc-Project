@@ -31,12 +31,12 @@ parser.add_argument(
 args = parser.parse_args()
 
 # sanity checks
-if (args.mysite_path) & (args.output_path):
+if (args.mysite_path!=None) & (args.output_path!=None):
     raise Exception(
         'mysite_path!=None and output_path!=None is not compatible\
             because output_path is used iff mysite_path=None.'
     )
-if (not args.mysite_path) & (not args.output_path):
+if (args.mysite_path==None) & (args.output_path==None):
     raise Exception(
         'mysite_path==None and output_path==None is not compatible\
             because output_path has no default value while must be specified.'
@@ -46,7 +46,7 @@ if (not args.mysite_path) & (not args.output_path):
 ##### APPLICATION #####
 #######################
 def main(): 
-    if args.mysite_path :
+    if args.mysite_path:
         # import Company - django.db.models.Model
         set_django_db(mysite_path=args.mysite_path)
         from tables_daniel.models import Company

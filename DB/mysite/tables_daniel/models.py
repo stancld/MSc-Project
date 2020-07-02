@@ -8,7 +8,7 @@ long_text = 500
 # MODELS
 class Company(models.Model):
     CompanyID = models.IntegerField(null=True)
-    Company = models.CharField(max_length=mid_text, blank=True) # Company name
+    Company = models.CharField(max_length=mid_text, blank=True, unique=True) # Company name
     Symbol = models.CharField(max_length=short_text, blank=True) # Stock symbol of a given company
     ListedOn = models.CharField(max_length=short_text, blank=True) # Stock index a given company is listed on
     Sector = models.CharField(max_length=mid_text, blank=True) # Sector a company operates in according to Yahoo Finance
@@ -23,8 +23,7 @@ class Company(models.Model):
 
 
 class Review(models.Model):
-    CompanyID = models.ForeignKey(Company, on_delete=models.CASCADE, null=True)
-    Company = models.CharField(max_length=mid_text, blank=True) # Company name
+    Company = models.ForeignKey(Company, on_delete=models.CASCADE) # Company name
     ReviewTitle = models.CharField(max_length=long_text, blank=True)
     Year = models.IntegerField(null=True) # Year published
     Month = models.IntegerField(null=True) # Month published

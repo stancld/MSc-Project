@@ -30,10 +30,11 @@ class GlassdoorScraper(object):
     ### MAGIC METHODS ###
     #####################
 
-    def __init__(self, chrome_driver_path, email, password,
-                headless_browsing, review_writer, max_review_age):
+    def __init__(self, chrome_driver_path, email, password, headless_browsing,
+                review_writer, company_reader, max_review_age):
         """
         Instantiate method handling all the necessary setting.
+
         :param path_chrome_drive: An absolute path to a ChromeDriver.
         :param email: Email used for log in to the Glassdoor account; type=str
         :param password: Password used for log in to the Glassdoor account; type=str
@@ -41,14 +42,24 @@ class GlassdoorScraper(object):
         :param review_writer:
             This django Model base that is used for writing and storing the data in a given database;
             type=django.db.models.base.ModelBase
+        :param company_reader:
+            This django Model base that is used for reading the data from a given database;
+            type=django.db.models.base.ModelBase
         :param max_review_age: An indication how old reviews are to be scraped; type=int|float
         """
-        # configure driver & chromeoptions
+        # configure driver & ChromeOptions
         self.chrome_driver_path=chrome_driver_path
-        self.chrome_options = webdriver.ChromeOptions()
         self.headless_browsing = headless_browsing
+        
+        self.chrome_options = webdriver.ChromeOptions()
+        
+        self.chrome_options.add_argument('--ignore-certificate-errors')
+        self.chrome_options.add_argument('--ignore-ssl-errors')
+        
         if headless_browsing:
             self.chrome_options.add_argument('--headless')
+            self.chrome_options.add_argument('--log-level=3')
+            self.chrome_options.add_argument('--silent') # --log-level=3 & --silent disable logging
             self.chrome_options.add_argument('--disable-gpu')
             self.chrome_options.add_argument("--no-sandbox")
             self.chrome_options.add_argument('window-size=1440,1080')
@@ -74,8 +85,8 @@ class GlassdoorScraper(object):
 
         # Instantiate empty dataframe for storing reviews
         self.schema = [
-            'CompanyID', 'Company', 'ReviewTitle',
-            'Year', 'Month', 'Day', 'Rating',
+            'Company', 'ReviewTitle', 'Year',
+            'Month', 'Day', 'Rating',
             'JobTitle', 'Location', 'Recommendation',
             'Outlook', 'OpinionOfCEO', 'Contract',
             'ContractPeriod', 'Pros', 'Cons',
@@ -99,8 +110,10 @@ class GlassdoorScraper(object):
         assert type(email)==str, 'Param email must be a type of str'
 
         if review_writer:
-            assert type(review_writer) == django.db.models.base.ModelBase, 'param CompanyWritert must be of type django.db.models.base.ModelBase!'
+            assert type(review_writer) == django.db.models.base.ModelBase, 'param review_writer must be of type django.db.models.base.ModelBase!'
+            assert type(company_reader) == django.db.models.base.ModelBase, 'param company_reader must be of type django.db.models.base.ModelBase!'
             self.ReviewWriter = review_writer
+            self.CompanyReader = company_reader
             self.reviewWriterIsUsed = True
 
     def __reload__(self, location, url_to_return):
@@ -111,8 +124,8 @@ class GlassdoorScraper(object):
         This procedure is held in order a robot will not be kicked out of glassdoor.
         This procedure takes place once a pre-define time limit is exceeded.
         
-        :param location:
-        :param url_to_return:
+        :param location: city; type=str
+        :param url_to_return: the last url visited, which shall be loaded; type=str
         """
         self.driver.quit()
         self.driver = webdriver.Chrome(
@@ -135,17 +148,21 @@ class GlassdoorScraper(object):
     def scrape(self, company_name, location, 
                 limit = float(np.inf)):
         """
-        MAIN FUNCTION (tba)
-        In this case, data are stored gradually because they might require a relatively large amount of space. This is a difference from WikiYahooScraper.
-        :param company_name: type=str
+        MAIN FUNCTION
+        This function is applied once a driver is signed in to the Glassdoor portal using self.GetOnReviewsPage function.
+
+        :param company_name: company name; type=str
         :param location: city; type=str
-        :param limit: number of pages to be scraped; type=int
+        :param limit: a number of pages to be scraped; type=int
         """
-        if self.reviewWriterIsUsed == True:
+        if self.reviewWriterIsUsed:
             # make self.data to be always an empty list if they are to be written into django db
             self.data = []
-        self.company_name = company_name # store company_name
         
+        # store company_name and filter out the company from CompanyDB
+        self.company_name = company_name # store company_name
+        self.company_django = self.CompanyReader.objects.get(Company=self.company_name)
+    
         scraping_startTime = time.time()
         while (self.page <= limit) & (self._isNextPageAvailable()) & (self._newerThanGivenYears()):
             self._clickContinueReading()
@@ -155,12 +172,14 @@ class GlassdoorScraper(object):
             )
             self._goNextPage()
             
+            # Reload driver and re-log in to Glassdoor portal in order to avoid some unwanted kicking out of the webiste
             if (time.time() - scraping_startTime) > self.limit_to_reload:
                 self.__reload__(location=location, url_to_return=self.driver.current_url)
                 scraping_startTime = time.time()
+            # print the state
             t = time.time() - scraping_startTime
             print(
-                f"Page {self.page} reached after {t:.2f} seconds after the most recent login."
+                f"Page {self.page} reached after {t:.2f} seconds since the most recent login."
             )
         
         # store the data if they are to be stored in django DB
@@ -170,6 +189,7 @@ class GlassdoorScraper(object):
     def acceptCookies(self):
         """
         Accept cookies consent if displayed.
+        This is important as a given bar hides important stuff.
         """
         try:
             self.driver.find_element_by_id('onetrust-accept-btn-handler').click()
@@ -178,11 +198,13 @@ class GlassdoorScraper(object):
     
     def getOnReviewsPage(self, company_name, location):
         """
-        Function that get users at on the first page of reviews for a given company.
-        :param company_name: type=str
-        :param location:
+        Function that is responsible for log in to the Glassdoor account.
+        Subsequently, it gets a driver on the first page of reviews for a given company.
+        Eventually, it sorts reviews from the most recent
+        :param company_name: company name; type=str
+        :param location: city; type=str
         """
-        self.sign_in()
+        self._signIn()
         time.sleep(2)
 
         self.company_name = company_name
@@ -198,14 +220,14 @@ class GlassdoorScraper(object):
     def getURL(self, url):
         """
         Get on URL and then sleep for a while to make sure web content to be loaded properly.
+        :param url: url; type=str
         """
         self.driver.get(url)
         time.sleep(1)
     
     def getReviews(self):
         """
-        A function returning a list of WebElements corresponding to individual 
-        reviews displayed on a given page.
+        A function returning a list of WebElements corresponding to individual  reviews displayed on a given page.
         There are two classes of empReview hence must be collected in two steps.
         *It might be moved to private functions*
         """
@@ -214,7 +236,8 @@ class GlassdoorScraper(object):
    
     def saveToCSV(self, path):
         """
-        :patam path:
+        Function saving the scraped data to a csv file.
+        :param path: path of output csv file; type=str
         """
         if self.reviewWriterIsUsed == True:
             print(f'Data cannot be saved to {path} as they have continuosly pushed to django database.')
@@ -225,7 +248,8 @@ class GlassdoorScraper(object):
 
     def saveToExcel(self, path):
         """
-        :param path:
+        Function saving the scraped data to a xlsx file.
+        :param path: path of output xlsx file; type=str
         """
         if self.reviewWriterIsUsed == True:
             print(f'Data cannot be saved to {path} as they have continuosly pushed to django database.')
@@ -236,11 +260,10 @@ class GlassdoorScraper(object):
     
     def searchReviews(self, company_name, location):
         """
-        A function that is responsible for searching company's reviews
-        once a user is on a main review page.
+        A function that is responsible for searching company's reviews once a driver is on a main review page.
         *It might be moved to private functions*
-        :param company_name: type=str
-        :param location: type=str
+        :param company_name: company name; type=str
+        :param location: city; type=str
         """
         try:
             self._fillCompanyName(company_name)
@@ -253,37 +276,17 @@ class GlassdoorScraper(object):
             self._clickSearchButtonSecondary()
         self.page = 1
         time.sleep(1)
-
-    def sign_in(self):
-        """
-        """
-        login_url='https://www.glassdoor.com/profile/login_input.htm'
-        self.getURL(login_url)
-        
-        if self._isLoginRequired():
-            try:
-                self.driver.find_element_by_name('username').send_keys(self.email)
-                self.driver.find_element_by_name('password').send_keys(self.password)
-                self.driver.find_element_by_xpath('//button[@type="submit"]').click()
-                print('Login was successful.')
-            except:
-                print('Login was NOT successful.')
-        else:
-            pass
     
     def parseReview(self, review):
         """
-        Parse a whole single review into individual elements listed below:
-            'ReviewTitle', 'Timestamp', 'Rating', 'JobTitle', 'Location',
-            'RecommendationBar', 'MainText', 'Pros', 'Cons', 'Advice 
-            to Managemet'
+        Parse a whole single review into individual elements listed below according to self.schema.
         :param review: WebElement
         """
         self._getReviewHTML(review) # create self.reviewHTML object
         self._parseReviewElements()
         
         return {
-            'Company': self.company_name,
+            'Company': self.company_django,
             'ReviewTitle': self._getReviewTitle(),
             'Year': self._getTimestamp(element='Year'),
             'Month': self._getTimestamp(element='Month'),
@@ -355,7 +358,7 @@ class GlassdoorScraper(object):
     def _fillCompanyName(self, company_name):
         """
         Fill a company name in a search field on the title page.
-        :param company_name: type=str
+        :param company_name: company name; type=str
         """
         assert type(company_name) == str, 'Param company_name must be a type of str.'
         self.driver.find_element_by_class_name("keyword").clear()
@@ -363,27 +366,17 @@ class GlassdoorScraper(object):
 
     def _fillCompanyNameSecondary(self, company_name):
         """
-        There are 
+        Fill a company name in a search field on the title page if a different page is displayed.
+        :param company_name: company name; type=str
         """
         assert type(company_name) == str, 'Param company_name must be a type of str.'
         self.driver.find_element_by_id("sc.keyword").clear()
         self.driver.find_element_by_id("sc.keyword").send_keys(company_name)
 
-
-    def _fillEmailAndClick(self, email):
-        """
-        Fill a user e-mail to log in a Glassdoor account.
-        :param email: type=str
-        """
-        assert type(email) == str, 'Param email must be a type of str.'
-        self.driver.find_element_by_xpath('//*[@id="identifierId"]').clear()
-        self.driver.find_element_by_xpath('//*[@id="identifierId"]').send_keys(email)
-        self.driver.find_element_by_xpath('//*[@id="identifierNext"]/div/span/span').click()
-
     def _fillLocation(self, location):
         """
         Fill a company name in a search field on the title page.
-        :param location: type=str
+        :param location: city; type=str
         """
         assert type(location) == str, 'Param locaation must be a type of str.'
         self.driver.find_element_by_class_name("loc").clear()
@@ -391,31 +384,16 @@ class GlassdoorScraper(object):
 
     def _fillLocationSecondary(self, location):
         """
+        Fill a company name in a search field on the title page if a different page is displayed..
+        :param location: city; type=str
         """
         assert type(location) == str, 'Param locaation must be a type of str.'
         self.driver.find_element_by_id("sc.location").clear()
         self.driver.find_element_by_id("sc.location").send_keys(location)
 
-    def _fillPassword(self):
-        """
-        """
-        if self.password == None:
-            self.driver.find_element_by_xpath('//*[@id="password"]/div[1]/div/div[1]/input').send_keys(input())
-        else:
-            self.driver.find_element_by_xpath('//*[@id="password"]/div[1]/div/div[1]/input').send_keys(self.password)
-
-    def _fillPasswordAndClick(self):
-        """
-        Fill a user password to log in a Glassdoor account. Password is asked to be typed.
-        """
-        self.driver.find_element_by_xpath('//*[@id="password"]/div[1]/div/div[1]/input').clear()
-        self._fillPassword()
-        self.driver.find_element_by_xpath('//*[@id="passwordNext"]/span/span').click()
-
     def _getEmployeeRelationship(self):
         """
         Parse reviewer's employee relationship, i.e. a former or current one, from review-HTML if available. 
-        :param reviewHTML: HTML code of a review page returned by a function _getReviewHTML, type=str
         """
         try:
             titleAndRelationshop = re.search('<span class="authorJobTitle middle">(.+?)</span>', self.reviewHTML).group(1)
@@ -425,7 +403,7 @@ class GlassdoorScraper(object):
     
     def _getContinueReadingList(self):
         """
-        Get the most recent version of 'Continue reading' buttons on reviews page.
+        Get the most recent version of 'Continue reading' buttons on reviews page. These are then clickable
         """
         return self.driver.find_elements_by_xpath(
             '//div[@class="v2__EIReviewDetailsV2__continueReading v2__EIReviewDetailsV2__clickable"]'
@@ -452,7 +430,6 @@ class GlassdoorScraper(object):
     def _getJobTitle(self):
         """
         Parse reviewer's job title from review-HTML if available.
-        :param reviewHTML: HTML code of a review page returned by a function _getReviewHTML, type=str
         """
         try:
             titleAndRelationshop = re.search('<span class="authorJobTitle middle">(.+?)</span>', self.reviewHTML).group(1)
@@ -462,7 +439,7 @@ class GlassdoorScraper(object):
     
     def _getLocation(self):
         """
-        Parse reviewr's job location from review-HTML if available.
+        Parse reviewer's job location from review-HTML if available.
         """
         try:
             return re.search('<span class="authorLocation">(.+?)</span>', self.reviewHTML).group(1)
@@ -480,8 +457,9 @@ class GlassdoorScraper(object):
 
     def _getRecommendationBar(self, element):
         """
-        Parse recomendation bar containing items/attributes like ('positive outlook', 'approves of CEO') etc.
-        All the items are concatenated to a string by ' | '.
+        Get a single element from a recomendation bar containing items/attributes like ('positive outlook', 'approves of CEO') etc.
+        :param element: element to be parsed from recommendation bar; type=str
+            Select from: ['Recommendation', 'Outlook', 'OpinionOfCEO']
         """
         assert type(element) == str, 'Param element must be a type of str.'
         assert element in ['Recommendation', 'Outlook', 'OpinionOfCEO'], "Element must be drawn from the list ['Recommendation', 'Outlook', 'OpinionOfCEO']."
@@ -490,8 +468,8 @@ class GlassdoorScraper(object):
     def _getReviewBody(self, element):
         """
         Get individual elements of the review body
-        :param element: A string indicating a component of a review body
-            select from: ['Pros', 'Cons', 'Advice to Management'], type=str
+        :param element: A string indicating a component of a review body; type=str
+            select from: ['Pros', 'Cons', 'Advice to Management']
         """
         assert type(element) == str, 'Param element must be a type of str.'
         assert element in ['Pros', 'Cons', 'Advice to Management'], "Element must be drawn from the list ['Pros', 'Cons', 'Advice to Management']."
@@ -519,7 +497,8 @@ class GlassdoorScraper(object):
     def _getTimestamp(self, element):
         """
         Get a single element = Day | Month | Year; from a timestamp.
-        :param element: draw from ['Day', 'Month', 'Year'], type=str
+        :param element: get a single element of a date, type=str
+            select from: ['Day', 'Month', 'Year']
         """
         assert type(element) == str, 'Param element must be a type of str.'
         assert element in ['Day', 'Month', 'Year'], "Element must be drawn from the list ['Day', 'Month', 'Year']."
@@ -537,6 +516,7 @@ class GlassdoorScraper(object):
     
     def _goNextPage(self):
         """
+        A function that takes a driver to the next page.
         """
         if '_P' in self.driver.current_url:
             next_url = re.sub('_P(.+?).htm', f'_P{(self.page)+1}.htm', self.driver.current_url)
@@ -548,14 +528,13 @@ class GlassdoorScraper(object):
 
     def _isLoginRequired(self):
         """
+        A function that checks if login is required.
         """
         return len(self.driver.find_elements_by_name('username')) > 0
 
     def _isNextPageAvailable(self):
         """
-        Needs to be finished.
-        The ultimate functionality is to find out whether the next page
-        contains any review. If not, scraping should be terminated. 
+        The function finds out whether the next page contains any review and returns boolean if so or not.
         """
         self.getReviews()
         return len(self.reviews) > 0
@@ -566,12 +545,6 @@ class GlassdoorScraper(object):
         This is an identifier of such an occasion.
         """
         return len(self.driver.find_elements_by_id('SearchResults')) != 0
-
-    def _loginRequired(self):
-        """
-        A function that is responsible for detecting whether a user is required to log in its Glassdoor account.
-        """
-        return len(self.driver.find_elements_by_xpath('//*[@id="HardsellOverlay"]/div/div/div/div/div/div/div/div[1]/div[1]/div/div[2]/button')) > 0
 
     def _newerThanGivenYears(self):
         """
@@ -613,7 +586,6 @@ class GlassdoorScraper(object):
             - recommendation of a company - (with values of recommends, doesn't recommend, none)
             - outlook; values - (with values of positive, neutral, negative, none)
             - approves of ceo - (with values of approves, no opinon, disapproves, none)
-        :param recommendationBar:
         """
         try:
             self.recommendationBar = {}
@@ -664,7 +636,6 @@ class GlassdoorScraper(object):
     def _parseReviewBody(self):
         """
         Parse review body containing 'Pros', 'Cons' and 'Advice to management element'   
-        :param reviewHTML:
         """
         _reviewHTML = re.sub('\r|\n', '', self.reviewHTML)
         tabs = re.findall(  '<p class="strong mb-0 mt-xsm">(.+?)</p>', _reviewHTML)
@@ -708,6 +679,24 @@ class GlassdoorScraper(object):
         self.getURL(link)
         time.sleep(1)
 
+    def _signIn(self):
+        """
+        The function that logs a driver in to a Glassdoor account.
+        """
+        login_url='https://www.glassdoor.com/profile/login_input.htm'
+        self.getURL(login_url)
+        
+        if self._isLoginRequired():
+            try:
+                self.driver.find_element_by_name('username').send_keys(self.email)
+                self.driver.find_element_by_name('password').send_keys(self.password)
+                self.driver.find_element_by_xpath('//button[@type="submit"]').click()
+                print('Login was successful.')
+            except:
+                print('Login was NOT successful.')
+        else:
+            pass
+    
     def _sortReviewsMostRecent(self):
         """
         This function sorts the reviews so that most recent ones are liste first.
@@ -718,11 +707,11 @@ class GlassdoorScraper(object):
     
     def _writeRowToDjangoDB(self, datarow):
         """
-        :param datarow:
+        This function takes care of writin the single review record into a Django database.
+        :param datarow: A single record (review); type=dict
         """
         try:
             reviewRecord = self.ReviewWriter(
-                CompanyID = 0,
                 Company = datarow['Company'],
                 ReviewTitle = datarow['ReviewTitle'],
                 Year = datarow['Year'],

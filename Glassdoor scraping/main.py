@@ -57,7 +57,8 @@ parser.add_argument(
 parser.add_argument(
     '--location',
     default='London',
-    help='A location we are interested in.'
+    help="A location we are interested in.\
+        Default='London'"
 )
 
 parser.add_argument(
@@ -98,14 +99,14 @@ else:
             Please, provide either path to the fiel with credentials or email/password directly to cmd.')
 
 if args.limit:
-    if type(args.limit)==int:
-        pass
-    else:
+    try:
+        args.limit = int(args.limit) 
+    except Exception:
         raise TypeError('Limit must be a type of an integer!.')
 else:
     args.limit = float(np.inf)
 
-companies = ['Intel Corporation']
+companies = ['Intel Corp.']
 #######################
 ##### APPLICATION #####
 #######################
@@ -113,7 +114,7 @@ def main():
     if args.mysite_path :
         # import Company - django.db.models.Model
         set_django_db(mysite_path=args.mysite_path)
-        from tables_daniel.models import Review
+        from tables_daniel.models import Review, Company
     else:
         Review = None
 
@@ -123,7 +124,8 @@ def main():
         password=args.password,
         headless_browsing=args.headless,
         review_writer=Review,
-        max_review_age=args.max_review_age,
+        company_reader=Company,
+        max_review_age=args.max_review_age
     )
     
     for company_name in companies:
