@@ -23,7 +23,7 @@ Please if any, use all the tools wisely.
 
 ## Installation of scraper tools
 1. Check, you're using python of version >3.7
-2. Clone/downloadn this repository
+2. Clone this repository via `git clone https://github.com/stancld/MSc-Project.git`
 3. Install all necessary dependencies via running `pip install -r requirements.txt` inside this repo.
 4. Install [ChromeDriver](http://chromedriver.chromium.org/). The path to the driver is then specified when you run the script itself.
 5. When you want to log in [Glassdoor](https://www.glassdoor.com/member/home/index.htm) an email and password are required to access your account. Hence, first create an account at [Glassdoor](https://www.glassdoor.com/member/home/index.htm) and, subsequently, create a file `credentials.json` containing `email` and `password` elements.
@@ -65,7 +65,7 @@ usage: main.py [-h] [--chrome_driver_path CHROME_DRIVER_PATH] [--headless]
                
 optional argument:
   -h --help                                     Show this help message and exit.
-  --chrome_driver_path CHROME_DRIVER_PATH        An absolute path to the ChromeDriver.
+  --chrome_driver_path CHROME_DRIVER_PATH       An absolute path to the ChromeDriver.
   --headless                                    If --headless is passed in, the `headless` browsing is used.
   -e EMAIL --email EMAIL                        Email used for log in to the Glassdoor account
   -p PASSWORD --password PASSWORD               Password used for log in to the Glassdoor account
