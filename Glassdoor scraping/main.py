@@ -50,7 +50,7 @@ parser.add_argument(
 
 parser.add_argument(
     '--companies',
-    help="An absolute path to the list of companies"
+    help="An absolute path to the list of companies (txt file)."
 )
 
 parser.add_argument(
@@ -62,13 +62,15 @@ parser.add_argument(
 
 parser.add_argument(
     '--max_review_age',
-    help='An indication how old reviews are to be scraped.'
+    help='An indication how old reviews are to be scraped.\
+        Define if min_date is not provided.'
 )
 
 parser.add_argument(
     '--min_date',
     help="An indication up to which date reviews are to be scraped.\
-        format='yyyy-mm-dd'"
+        format='yyyy-mm-dd'\
+        Define iff max_review_age is not provided."
 )
 
 parser.add_argument(
@@ -122,9 +124,7 @@ else:
     raise Exception('Filepath to the text file containing companies must be provided.')
 
 ## min_date | max_reivew_age
-if (args.min_date==None) & (args.max_review_age==None):
-    raise Exception('Either min_date or max_review_age must be specified!')
-elif (args.min_date==None) & (args.max_review_age==None):
+if (args.min_date!=None) & (args.max_review_age!=None):
     raise Exception('Only one parameter out of min_date and max_review_age can be specified!')
 
 ## file path to the output files

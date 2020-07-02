@@ -110,9 +110,12 @@ class GlassdoorScraper(object):
         if min_date:
             self.min_date = datetime.datetime.strptime(min_date, '%Y-%m-%d')
             self.max_review_age = float(np.inf)
-        else:
+        elif max_review_age:
             self.max_review_age = max_review_age # how old reviews might be
             self.min_date = self.no_min_date
+        else:
+            self.min_date = self.no_min_date
+            self.max_review_age = float(np.inf)
 
         # sanity checks
         assert type(email)==str, 'Param email must be a type of str'
