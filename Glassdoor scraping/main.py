@@ -57,7 +57,7 @@ parser.add_argument(
 parser.add_argument(
     '--location',
     default='London',
-    help='A location we are interested in'
+    help='A location we are interested in.'
 )
 
 parser.add_argument(
@@ -75,7 +75,8 @@ parser.add_argument(
 
 parser.add_argument(
     '-l', '--limit',
-    help='A number of pages to be scraped.'
+    help='A number of pages to be scraped.\
+        This is an ideal option for testing, otherwise no limit is passed.'
 )
 
 args = parser.parse_args()
