@@ -77,7 +77,7 @@ class GlassdoorScraper(object):
             self.driver.set_window_position(0,0)
         
         # set the time limit after selenium driver should be reopen and a robot should re-log in glassdor
-        self.limit_to_reload = 6*60*60 # 6 hours
+        self.limit_to_reload = 240*60*60 # 6 hours
         
         # store url to the glassdor reviews main page
         self.url = 'https://www.glassdoor.com/Reviews/index.htm'
@@ -126,6 +126,8 @@ class GlassdoorScraper(object):
             self.ReviewWriter = review_writer
             self.CompanyReader = company_reader
             self.reviewWriterIsUsed = True
+        else:
+            self.data_to_save = []
 
     def __reload__(self, location, url_to_return):
         """
@@ -176,12 +178,15 @@ class GlassdoorScraper(object):
     
         scraping_startTime = time.time()
         print(f"{self.company_name} is being scraped.")
-        while (self.page <= limit) & (self._isNextPageAvailable()) & ( (self._newerThanGivenYears()) | (self._newerThanMinDate())):
-            self._clickContinueReading()
-            self.getReviews()           
-            self.data.extend(
-                [self.parseReview(review) for review in self.reviews]
-            )
+        while (self.page <= limit) & (self._isNextPageAvailable()) & ( (self._newerThanGivenYears()) | (self._newerThanMinDate()) ):
+            try:
+                self._clickContinueReading()
+                self.getReviews()           
+                self.data.extend(
+                    [self.parseReview(review) for review in self.reviews]
+                )
+            except:
+                pass
             self._goNextPage()
             
             # Reload driver and re-log in to Glassdoor portal in order to avoid some unwanted kicking out of the webiste
@@ -198,8 +203,10 @@ class GlassdoorScraper(object):
         )
         
         # store the data if they are to be stored in django DB
-        if self.reviewWriterIsUsed == True:
+        if self.reviewWriterIsUsed:
             [self._writeRowToDjangoDB(datarow) for datarow in self.data]
+        else:
+            self.data_to_save.extend(self.data)
 
     def acceptCookies(self):
         """
@@ -260,7 +267,7 @@ class GlassdoorScraper(object):
         if self.reviewWriterIsUsed == True:
             print(f'Data cannot be saved to {path} as they have continuosly pushed to django database.')
         pd.DataFrame(
-            self.data,
+            self.data_to_save,
             columns=self.schema
         ).to_csv(path)
 
@@ -272,7 +279,7 @@ class GlassdoorScraper(object):
         if self.reviewWriterIsUsed == True:
             print(f'Data cannot be saved to {path} as they have continuosly pushed to django database.')
         pd.DataFrame(
-            self.data,
+            self.data_to_save,
             columns=self.schema
         ).to_excel(path)
     
@@ -555,6 +562,18 @@ class GlassdoorScraper(object):
         The function finds out whether the next page contains any review and returns boolean if so or not.
         """
         self.getReviews()
+        attempts = 0
+        while (len(self.reviews) == 0) & (attempts < 3):
+            self.getURL(self.driver.current_url)
+            self.getReviews()
+            time.sleep(20)
+            attempts += 1
+        
+        if attempts==3:
+            time.sleep(120)
+            self.getURL(self.driver.current_url)
+            self.getReviews()
+
         return len(self.reviews) > 0
 
     def _isNotUniqueSearchResult(self):
@@ -573,7 +592,7 @@ class GlassdoorScraper(object):
         we 
         """
         if self.max_review_age != float(np.inf):
-            if sum(datarow['Company'] == self.company_name for datarow in self.data) > 0:
+            if len(self.data) > 0:
                 last_date = None
                 t = 1
                 while last_date == None:
@@ -600,7 +619,7 @@ class GlassdoorScraper(object):
         through while and try&except loop.
         """
         if self.min_date != self.no_min_date:
-            if sum(datarow['Company'] == self.company_name for datarow in self.data) > 0:
+            if len(self.data) > 0:
                 last_date = None
                 t = 1
                 while last_date == None:
@@ -609,7 +628,7 @@ class GlassdoorScraper(object):
                                 '-'.join(
                                     [str(self.data[-t]['Year']), str(self.data[-t]['Month']), str(self.data[-t]['Day'])]
                                     ), '%Y-%m-%d'
-                            ).date()
+                            )
                     except:
                         t += 1
                 return last_date > self.min_date
