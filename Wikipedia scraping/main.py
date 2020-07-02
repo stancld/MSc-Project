@@ -42,6 +42,11 @@ if (args.mysite_path==None) & (args.output_path==None):
             because output_path has no default value while must be specified.'
     )
 
+# parse stock_indices
+if args.stock_indices != ['S&P 500', 'FTSE 100', 'EURO STOXX 50']:
+    args.stock_indices = args.stock_indices.strip('[').strip(']').split(',')
+    args.stock_indices = [stock_index.strip().strip("'") for stock_index in args.stock_indices]
+
 #######################
 ##### APPLICATION #####
 #######################
@@ -59,7 +64,7 @@ def main():
         wikiScraper.scrapeWikipedia(stock_index)
     wikiScraper.scrapeYahooFinance()
     
-    if args.use_django_db == True:
+    if args.mysite_path:
         wikiScraper.writeToDjangoDB()
     else:
         wikiScraper.save(args.output_path)

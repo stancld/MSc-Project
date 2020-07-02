@@ -181,6 +181,9 @@ class GlassdoorScraper(object):
             print(
                 f"Page {self.page} reached after {t:.2f} seconds since the most recent login."
             )
+        print(
+            f"Reviews for {self.company_name} has been scraped and stored."
+        )
         
         # store the data if they are to be stored in django DB
         if self.reviewWriterIsUsed == True:
@@ -212,10 +215,13 @@ class GlassdoorScraper(object):
         self.searchReviews(company_name, location)
         if self._isNotUniqueSearchResult():
             self._selectFirstCompany()
-        self._clickReviewsButton()
-        time.sleep(2)
+        try:
+            self._clickReviewsButton()
+            time.sleep(2)
 
-        self._sortReviewsMostRecent()
+            self._sortReviewsMostRecent()
+        except:
+            pass
         
     def getURL(self, url):
         """
@@ -399,7 +405,7 @@ class GlassdoorScraper(object):
             titleAndRelationshop = re.search('<span class="authorJobTitle middle">(.+?)</span>', self.reviewHTML).group(1)
             return titleAndRelationshop.split(' - ')[1]
         except:
-            return None
+            return ''
     
     def _getContinueReadingList(self):
         """
@@ -416,7 +422,7 @@ class GlassdoorScraper(object):
         try:
             return [word for word in self.mainText.split() if 'time' in word][0]
         except:
-            return None
+            return ''
 
     def _getContractPeriod(self):
         """
@@ -425,7 +431,7 @@ class GlassdoorScraper(object):
         try:
             return re.search('for (.+)', self.mainText).group(1)
         except:
-            return None
+            return ''
     
     def _getJobTitle(self):
         """
@@ -435,7 +441,7 @@ class GlassdoorScraper(object):
             titleAndRelationshop = re.search('<span class="authorJobTitle middle">(.+?)</span>', self.reviewHTML).group(1)
             return titleAndRelationshop.split(' - ')[0]
         except:
-            return None
+            return ''
     
     def _getLocation(self):
         """
@@ -444,7 +450,7 @@ class GlassdoorScraper(object):
         try:
             return re.search('<span class="authorLocation">(.+?)</span>', self.reviewHTML).group(1)
         except:
-            return None
+            return ''
     
     def _getRating(self):
         """
@@ -476,7 +482,7 @@ class GlassdoorScraper(object):
         try:
             return self.parsedReviewBody[element]
         except:
-            return None
+            return ''
     
     def _getReviewHTML(self, review):
         """
@@ -492,7 +498,7 @@ class GlassdoorScraper(object):
         try:
             return re.search('reviewLink">"(.+?)"</a>', self.reviewHTML).group(1)
         except:
-            return None
+            return ''
 
     def _getTimestamp(self, element):
         """
@@ -611,7 +617,7 @@ class GlassdoorScraper(object):
             itemCEO = [' '.join(item.split()[:-2]) for item in self.recommendationBarItems if 'ceo' in item.lower()]
             return itemCEO[0]
         except:
-            return None
+            return ''
     
     def _parseRecommendationBar_Outlook(self):
         """
@@ -621,7 +627,7 @@ class GlassdoorScraper(object):
             itemOutlook = [item.split()[0] for item in self.recommendationBarItems if 'outlook' in item.lower()]
             return itemOutlook[0]
         except:
-            return None
+            return ''
 
     def _parseRecommendationBar_Recommendation(self):
         """
@@ -631,7 +637,7 @@ class GlassdoorScraper(object):
             itemRecommendation = [item for item in self.recommendationBarItems if 'recommend' in item.lower()]
             return itemRecommendation[0]
         except:
-            return None
+            return ''
     
     def _parseReviewBody(self):
         """
@@ -670,14 +676,17 @@ class GlassdoorScraper(object):
         """
         If more companies are found under a given keyword, the first returned result is chosen by this function.
         """
-        firstCompany = self.driver.find_elements_by_class_name('single-company-result')[0]
-        companyLink = re.search(
-            f'<h2><a href="(.+?)">{self.company_name}(.+?)</h2>',
-            firstCompany.get_attribute('outerHTML')).group(1)
-        link = 'https://www.glassdoor.com' + companyLink
-        print(link)
-        self.getURL(link)
-        time.sleep(1)
+        try:
+            firstCompany = self.driver.find_elements_by_class_name('single-company-result')[0]
+            companyLink = re.search(
+                f'<h2><a href="(.+?)">{self.company_name}(.+?)</h2>',
+                firstCompany.get_attribute('outerHTML')).group(1)
+            link = 'https://www.glassdoor.com' + companyLink
+            print(link)
+            self.getURL(link)
+            time.sleep(1)
+        except:
+            self.page = float(np.inf)
 
     def _signIn(self):
         """

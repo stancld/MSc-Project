@@ -49,9 +49,8 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    '--max_review_age',
-    default=2,
-    help='An indication how old reviews are to be scraped.'
+    '--companies',
+    help="An absolute path to the list of companies"
 )
 
 parser.add_argument(
@@ -59,6 +58,12 @@ parser.add_argument(
     default='London',
     help="A location we are interested in.\
         Default='London'"
+)
+
+parser.add_argument(
+    '--max_review_age',
+    default=2,
+    help='An indication how old reviews are to be scraped.'
 )
 
 parser.add_argument(
@@ -98,6 +103,15 @@ else:
         raise Exception('Neiter filepath to the credentials, nor email and password are specified.\
             Please, provide either path to the fiel with credentials or email/password directly to cmd.')
 
+if args.companies:
+    try:
+        with open(args.companies, 'r') as f:
+            companies = [line.strip() for line in f]
+    except FileNotFoundError:
+        raise Exception('The filepath given does noe exist or the format of the file is not appropriate')
+else:
+    raise Exception('Filepath to the text file containing companies must be provided.')
+
 if args.limit:
     try:
         args.limit = int(args.limit) 
@@ -106,7 +120,6 @@ if args.limit:
 else:
     args.limit = float(np.inf)
 
-companies = ['Intel Corp.']
 #######################
 ##### APPLICATION #####
 #######################
