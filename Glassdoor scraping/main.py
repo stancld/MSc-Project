@@ -26,6 +26,12 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    '--headless',
+    action='store_true',
+    help='If --headless is passed in, the `headless` browsing is used.'
+)
+
+parser.add_argument(
     '--email',
     help='Email used for log in to the Glassdoor account'
 )
@@ -40,12 +46,6 @@ parser.add_argument(
     default='/mnt/c/Data/UCL/@MSc Project - Data and sources/credentials.json',
     help='Path to credential file containing email and password\
         used for lod in to the Glassdoor account.'
-)
-
-parser.add_argument(
-    '--headless',
-    action='store_true',
-    help='If --headless is passed in, the `headless` browsing is used.'
 )
 
 parser.add_argument(
@@ -79,9 +79,14 @@ parser.add_argument(
         This is required iff mysite_path is not passed in.'
 )
 
+parser.add_argument(
+    '-l', '--limit',
+    help='A number of pages to be scraped.'
+)
+
 args = parser.parse_args()
 
-# sanity checks
+# some value assignments and sanity checks
 if args.credentials:
     try:
         with open(args.credentials) as f:
@@ -96,6 +101,14 @@ else:
     except ValueError:
         raise Exception('Neiter filepath to the credentials, nor email and password are specified.\
             Please, provide either path to the fiel with credentials or email/password directly to cmd.')
+
+if args.limit:
+    if type(args.limit)==int:
+        pass
+    else:
+        raise TypeError('Limit must be a type of an integer!.')
+else:
+    args.limit = float(np.inf)
 
 companies = ['Intel Corporation']
 #######################
@@ -122,12 +135,13 @@ def main():
     for company_name in companies:
         scraper.getOnReviewsPage( 
             company_name=company_name,
-            location=args.location    
+            location=args.location
         )
         scraper.acceptCookies()
         scraper.scrape(
             company_name=company_name,
             location=args.location,
+            limit=args.limit
         )
 
 if __name__=='__main__':
