@@ -90,7 +90,7 @@ optional argument:
 1. *Running the script with a headless browser, using existing credentials and storing the scraped data within a database*
 ```
 python main.py --chrome_driver_path '/mnt/c/data/chromedriver/ --headless -c '/mnt/c/data/credentials.json'
---min_date '2018-06-30' , --mysite_path '/mnt/c/mysite'
+--min_date '2018-06-30' --mysite_path '/mnt/c/mysite'
 ```
 This command downloads all the reviews with a maximum age of 3 years. Headless browsing is used and eventually all the scraped data are pushed into a django DB specified by mysite_path.
 
