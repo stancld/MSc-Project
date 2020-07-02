@@ -62,8 +62,13 @@ parser.add_argument(
 
 parser.add_argument(
     '--max_review_age',
-    default=2,
     help='An indication how old reviews are to be scraped.'
+)
+
+parser.add_argument(
+    '--min_date',
+    help="An indication up to which date reviews are to be scraped.\
+        format='yyyy-mm-dd'"
 )
 
 parser.add_argument(
@@ -88,6 +93,8 @@ parser.add_argument(
 args = parser.parse_args()
 
 # some value assignments and sanity checks
+
+## credentials
 if args.credentials:
     try:
         with open(args.credentials) as f:
@@ -103,14 +110,28 @@ else:
         raise Exception('Neiter filepath to the credentials, nor email and password are specified.\
             Please, provide either path to the fiel with credentials or email/password directly to cmd.')
 
+## file path to the txt file with companies
 if args.companies:
     try:
         with open(args.companies, 'r') as f:
             companies = [line.strip() for line in f]
+        print(f"{len(companies)} companies are to be scraped.")
     except FileNotFoundError:
         raise Exception('The filepath given does noe exist or the format of the file is not appropriate')
 else:
     raise Exception('Filepath to the text file containing companies must be provided.')
+
+## min_date | max_reivew_age
+if (args.min_date==None) & (args.max_review_age==None):
+    raise Exception('Either min_date or max_review_age must be specified!')
+elif (args.min_date==None) & (args.max_review_age==None):
+    raise Exception('Only one parameter out of min_date and max_review_age can be specified!')
+
+## file path to the output files
+if args.output_path:
+    file_type = args.output_path.split('.')[-1]
+    if file_type not in ['csv', 'xlsx', 'xls']:
+        raise Exception('Invalid file path format.')
 
 if args.limit:
     try:
@@ -138,7 +159,8 @@ def main():
         headless_browsing=args.headless,
         review_writer=Review,
         company_reader=Company,
-        max_review_age=args.max_review_age
+        max_review_age=args.max_review_age,
+        min_date=args.min_date
     )
     
     for company_name in companies:

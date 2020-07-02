@@ -31,7 +31,7 @@ class GlassdoorScraper(object):
     #####################
 
     def __init__(self, chrome_driver_path, email, password, headless_browsing,
-                review_writer, company_reader, max_review_age):
+                review_writer, company_reader, max_review_age, min_date):
         """
         Instantiate method handling all the necessary setting.
 
@@ -46,6 +46,7 @@ class GlassdoorScraper(object):
             This django Model base that is used for reading the data from a given database;
             type=django.db.models.base.ModelBase
         :param max_review_age: An indication how old reviews are to be scraped; type=int|float
+        :param min_date: An indication up to which date reviews are to be scraped.; type=str
         """
         # configure driver & ChromeOptions
         self.chrome_driver_path=chrome_driver_path
@@ -54,6 +55,7 @@ class GlassdoorScraper(object):
         self.chrome_options = webdriver.ChromeOptions()
         
         self.chrome_options.add_argument('--ignore-certificate-errors')
+        self.chrome_options.add_argument('--ignore-certificate-errors-spki-list')
         self.chrome_options.add_argument('--ignore-ssl-errors')
         
         if headless_browsing:
@@ -75,7 +77,7 @@ class GlassdoorScraper(object):
             self.driver.set_window_position(0,0)
         
         # set the time limit after selenium driver should be reopen and a robot should re-log in glassdor
-        self.limit_to_reload = 3*60*60 # 3 hours
+        self.limit_to_reload = 6*60*60 # 6 hours
         
         # store url to the glassdor reviews main page
         self.url = 'https://www.glassdoor.com/Reviews/index.htm'
@@ -104,7 +106,13 @@ class GlassdoorScraper(object):
 
         # get current date so that scraping can be stop w.r.t. date
         self.current_date = date.today()
-        self.max_review_age = max_review_age # how old reviews might be
+        self.no_min_date = datetime.datetime.strptime("1800-01-01",'%Y-%m-%d')
+        if min_date:
+            self.min_date = datetime.datetime.strptime(min_date, '%Y-%m-%d')
+            self.max_review_age = float(np.inf)
+        else:
+            self.max_review_age = max_review_age # how old reviews might be
+            self.min_date = self.no_min_date
 
         # sanity checks
         assert type(email)==str, 'Param email must be a type of str'
@@ -164,7 +172,8 @@ class GlassdoorScraper(object):
         self.company_django = self.CompanyReader.objects.get(Company=self.company_name)
     
         scraping_startTime = time.time()
-        while (self.page <= limit) & (self._isNextPageAvailable()) & (self._newerThanGivenYears()):
+        print(f"{self.company_name} is being scraped.")
+        while (self.page <= limit) & (self._isNextPageAvailable()) & ( (self._newerThanGivenYears()) | (self._newerThanMinDate())):
             self._clickContinueReading()
             self.getReviews()           
             self.data.extend(
@@ -560,22 +569,52 @@ class GlassdoorScraper(object):
         through while and try&except loop.
         we 
         """
-        if sum(datarow['Company'] == self.company_name for datarow in self.data) > 0:
-            last_date = None
-            t = 1
-            while last_date == None:
-                try:
-                    last_date = datetime.datetime.strptime(
-                            '-'.join(
-                                [str(self.data[-t]['Year']), str(self.data[-t]['Month']), str(self.data[-t]['Day'])]
-                                ), '%Y-%m-%d'
-                        ).date()
-                    time_delta = (self.current_date - last_date).days / 365
-                except:
-                    t += 1
-            return time_delta < self.max_review_age
+        if self.max_review_age != float(np.inf):
+            if sum(datarow['Company'] == self.company_name for datarow in self.data) > 0:
+                last_date = None
+                t = 1
+                while last_date == None:
+                    try:
+                        last_date = datetime.datetime.strptime(
+                                '-'.join(
+                                    [str(self.data[-t]['Year']), str(self.data[-t]['Month']), str(self.data[-t]['Day'])]
+                                    ), '%Y-%m-%d'
+                            ).date()
+                        time_delta = (self.current_date - last_date).days / 365
+                    except:
+                        t += 1
+                return time_delta < self.max_review_age
+            else:
+                return True
         else:
-            return True
+            return False # as it is not applied
+    
+    def _newerThanMinDate(self):
+        """
+        A function that returns a boolean whether the oldest scraped review has more recent date than min_date.
+        Sometimes a featured review may occur, which disables to compute time_delta.
+        Not to overcomplicate dropping these records during the scraping, we just look up to the first non-featured review
+        through while and try&except loop.
+        """
+        if self.min_date != self.no_min_date:
+            if sum(datarow['Company'] == self.company_name for datarow in self.data) > 0:
+                last_date = None
+                t = 1
+                while last_date == None:
+                    try:
+                        last_date = datetime.datetime.strptime(
+                                '-'.join(
+                                    [str(self.data[-t]['Year']), str(self.data[-t]['Month']), str(self.data[-t]['Day'])]
+                                    ), '%Y-%m-%d'
+                            ).date()
+                    except:
+                        t += 1
+                return last_date > self.min_date
+            else:
+                return True
+        else:
+            return False # as it is not applied
+
     
     def _parseMainText(self):
         """
