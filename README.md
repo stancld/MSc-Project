@@ -51,4 +51,39 @@ This command downloads all the firms which are listed on *S&P 500, FTSE 100, EUR
 
 #### 2. Glassdoor Scraper
 ```
+usage: main.py [-h] [--chrome_driver_path CHROME_DRIVER_PATH] [--headless]
+               [--email EMAIL] [-p PASSWORD] [-c CREDENTIALS]
+               [--max_review_age MAX_REVIEW_AGE] [-u URL] [--location LOCATION]
+               [--mysite_path MYSITE_PATH] [--output_path OUTPUT_PATH] [-l LIMIT]
+               
+optional argument:
+  -h --help                                     Show this help message and exit.
+  --chrome_driver_path CHROME_DRIVER_PATH        An absolute path to the ChromeDriver.
+  --headless                                    If --headless is passed in, the `headless` browsing is used.
+  -e EMAIL --email EMAIL                        Email used for log in to the Glassdoor account
+  -p PASSWORD --password PASSWORD               Password used for log in to the Glassdoor account
+  -c CREDENTIALS --credentials CREDENTIALS      Path to credential file containing email and password
+                                                used for log in to the Glassdoor account.
+  --max_review_age MAX_REVIEW_AGE               An indication how old reviews are to be scraped.
+                                                Default=2
+  --location LOCATION                           A location we are interested in.
+                                                Default='London'
+  --mysite_path MYSITE_PATH                     An absolute path to the django application containing models for the DB.
+                                                This is required iff output_path is not passed in.
+  --output_path OUTPUT_PATH                     An absolute path of the output csv/xlsx file storing the scraped data.
+                                                This is required iff mysite_path is not passed in.
+  -l LIMIT --limit LIMIT                        A number of pages to be scraped.
+                                                This is an ideal option for testing, otherwise no limit is passed.
+```
+**Examples**
+1. *Running the script with a headless browser, using existing credentials and storing the scraped data within a database*
+```
+python main.py --chrome_driver_path '/mnt/c/data/chromedriver/ --headless -c '/mnt/c/data/credentials.json'
+--max_review_age 3 --location 'New York', --mysite_path '/mnt/c/mysite'
+```
+This command downloads all the reviews with a maximum age of 3 years. Headless browsing is used and eventually all the scraped data are pushed into a django DB specified by mysite_path.
+
+2. *Running the script for testing with no advanced options.*
+```
+python main.py --chrome_driver_path '/mnt/c/data/chromedriver/ -e <user_email> -p <user_password> --output_path '/mnt/c/data/reviews.csv' -l 10
 ```
