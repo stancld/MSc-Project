@@ -15,7 +15,7 @@ The aim of this industry-based project, conducted in a cooperation with Fidelity
 ## Description of the functionality of scraper tools
 
 ## Installation of scraper tools
-1. Check, you're python of version >3.7
+1. Check, you're using python of version >3.7
 2. Clone/downloadn this repository
 3. Install all necessary dependencies via running `pip install -r requirements.txt` inside this repo.
 4. Install [ChromeDriver](http://chromedriver.chromium.org/). The path to the driver is then specified when you run the script itself.
