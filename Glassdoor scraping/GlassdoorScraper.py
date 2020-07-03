@@ -149,7 +149,7 @@ class GlassdoorScraper(object):
             self.driver.set_window_size(1440, 1080)
             self.driver.set_window_position(0,0)
         
-        self.getOnReviewsPage(self.company_name, location)
+        self.getOnReviewsPage(self.company_name, location, url=None) # must be edited
         self.getURL(url_to_return)
 
     ######################
@@ -218,7 +218,7 @@ class GlassdoorScraper(object):
         except:
             print('No cookies consent is required to accept.')
     
-    def getOnReviewsPage(self, company_name, location):
+    def getOnReviewsPage(self, company_name, location, url):
         """
         Function that is responsible for log in to the Glassdoor account.
         Subsequently, it gets a driver on the first page of reviews for a given company.
@@ -231,23 +231,27 @@ class GlassdoorScraper(object):
 
         self.company_name = company_name
         
-        success, fails = 0, 0
-        while (success==0) & (fails < 5):
-            self.getURL(self.url)
-            self.searchReviews(company_name, location)
-            if self._isNotUniqueSearchResult():
-                self._selectFirstCompany()
-            try:
-                self._clickReviewsButton()
-                time.sleep(2)
+        if url:
+            self.getURL(url)
+        else:
+            success, fails = 0, 0
+            while (success==0) & (fails < 5):
+                self.getURL(self.url)
+                self.searchReviews(company_name, location)
+                time.sleep(3)
+                if self._isNotUniqueSearchResult():
+                    print('First company from the list selected.')
+                    self._selectFirstCompany()
+                    print(self.page)
+                try:
+                    self._clickReviewsButton()
+                    time.sleep(2)
 
-                self._sortReviewsMostRecent()
-                success += 1
-            except:
-                fails += 1
-                if fails == 4:
-                    time.sleep(1800) 
-                else:
+                    self._sortReviewsMostRecent()
+                    success += 1
+                except:
+                    fails += 1
+                    print(f'The attempt no.{fails} to get on reviews page fails.')
                     time.sleep(120)
         
     def getURL(self, url):
@@ -298,12 +302,16 @@ class GlassdoorScraper(object):
         :param company_name: company name; type=str
         :param location: city; type=str
         """
+        if len(company_name.split()) > 2:
+            company_name_to_search = ' '.join(company_name.split()[:2])
+        else:
+            company_name_to_search = company_name
         try:
-            self._fillCompanyName(company_name)
+            self._fillCompanyName(company_name_to_search)
             self._fillLocation(location)
             self._clickSearchButton()
         except:
-            self._fillCompanyNameSecondary(company_name)
+            self._fillCompanyNameSecondary(company_name_to_search)
             self._fillLocationSecondary(location)
             self._closeAddResumeWindow()
             self._clickSearchButtonSecondary()
@@ -749,10 +757,14 @@ class GlassdoorScraper(object):
         If more companies are found under a given keyword, the first returned result is chosen by this function.
         """
         try:
-            firstCompany = self.driver.find_elements_by_class_name('single-company-result')[0]
+            if len(self.driver.find_elements_by_class_name('single-company-result')) > 0:
+                firstCompany = self.driver.find_elements_by_class_name('single-company-result')[0]
+            else:
+                firstCompany = self.driver.find_elements_by_class_name('single-company-result module ')[0]
+            
             companyLink = re.search(
-                f'<h2><a href="(.+?)">{self.company_name}(.+?)</h2>',
-                firstCompany.get_attribute('outerHTML')).group(1)
+               f'<a href="(.+?)">(.+?)</a>',
+                firstCompany.get_attribute('outerHTML')).group(1).split()[0].strip('"')
             link = 'https://www.glassdoor.com' + companyLink
             print(link)
             self.getURL(link)

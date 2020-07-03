@@ -54,6 +54,12 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    '-u', '--url',
+    help='An absolute path to the list of  URL address (txt file)\
+        to the landing page of reviews for a given company.'
+)
+
+parser.add_argument(
     '--location',
     default='London',
     help="A location we are interested in.\
@@ -123,6 +129,13 @@ if args.companies:
 else:
     raise Exception('Filepath to the text file containing companies must be provided.')
 
+## if url provided, the length of the url file and companies file must be the same
+if args.url:
+    if args.companies:
+        pass
+    else:
+        raise Exception('Both parameters companies and url must be given.')
+
 ## min_date | max_reivew_age
 if (args.min_date!=None) & (args.max_review_age!=None):
     raise Exception('Only one parameter out of min_date and max_review_age can be specified!')
@@ -166,7 +179,8 @@ def main():
     for company_name in companies:
         scraper.getOnReviewsPage( 
             company_name=company_name,
-            location=args.location
+            location=args.location,
+            url=url
         )
         scraper.acceptCookies()
         scraper.scrape(
