@@ -342,11 +342,13 @@ class GlassdoorScraper(object):
         """
         while len(self._getContinueReadingList()) > 0:
             continueReadingPresent = 0
-            while continueReadingPresent == 0:
+            attempts = 0
+            while (continueReadingPresent == 0) & (attempts < 60):
                 try:
                     self._getContinueReadingList()[0].click()
                     continueReadingPresent += 1
                 except:
+                    attempts += 1
                     time.sleep(1)
             time.sleep(5)
     
@@ -560,6 +562,7 @@ class GlassdoorScraper(object):
     def _isNextPageAvailable(self):
         """
         The function finds out whether the next page contains any review and returns boolean if so or not.
+        Sometimes access to the webpage may be denied hence we try to approach it multiple times with time.sleep.
         """
         self.getReviews()
         attempts = 0
@@ -786,7 +789,7 @@ class GlassdoorScraper(object):
                 ReviewTitle = datarow['ReviewTitle'],
                 Year = datarow['Year'],
                 Month = datarow['Month'],
-                Day = datarow['Month'],
+                Day = datarow['Day'],
                 Rating = datarow['Rating'],
                 JobTitle = datarow['JobTitle'],
                 EmployeeRelationship = datarow['EmployeeRelationship'],
