@@ -230,17 +230,25 @@ class GlassdoorScraper(object):
         time.sleep(2)
 
         self.company_name = company_name
-        self.getURL(self.url)
-        self.searchReviews(company_name, location)
-        if self._isNotUniqueSearchResult():
-            self._selectFirstCompany()
-        try:
-            self._clickReviewsButton()
-            time.sleep(2)
+        
+        success, fails = 0, 0
+        while (success==0) & (fails < 5):
+            self.getURL(self.url)
+            self.searchReviews(company_name, location)
+            if self._isNotUniqueSearchResult():
+                self._selectFirstCompany()
+            try:
+                self._clickReviewsButton()
+                time.sleep(2)
 
-            self._sortReviewsMostRecent()
-        except:
-            pass
+                self._sortReviewsMostRecent()
+                success += 1
+            except:
+                fails += 1
+                if fails == 4:
+                    time.sleep(1800) 
+                else:
+                    time.sleep(120)
         
     def getURL(self, url):
         """
