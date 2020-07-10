@@ -188,6 +188,14 @@ class GlassdoorScraper(object):
             except:
                 pass
             self._goNextPage()
+
+            # save some intermediate files
+            if (self.page-1) % 100==0:
+                if self.reviewWriterIsUsed:
+                    [self._writeRowToDjangoDB(datarow) for datarow in self.data]
+                    self.data = []
+                else:
+                    self.data_to_save.extend(self.data)
             
             # Reload driver and re-log in to Glassdoor portal in order to avoid some unwanted kicking out of the webiste
             if (time.time() - scraping_startTime) > self.limit_to_reload:
@@ -198,11 +206,13 @@ class GlassdoorScraper(object):
             print(
                 f"Page {self.page} reached after {t:.2f} seconds since the most recent login."
             )
+            
         print(
             f"Reviews for {self.company_name} has been scraped and stored."
         )
         
         # store the data if they are to be stored in django DB
+        
         if self.reviewWriterIsUsed:
             [self._writeRowToDjangoDB(datarow) for datarow in self.data]
         else:
@@ -233,6 +243,7 @@ class GlassdoorScraper(object):
         
         if url:
             self.getURL(url)
+            self._sortReviewsMostRecent()
         else:
             success, fails = 0, 0
             while (success==0) & (fails < 5):
@@ -253,6 +264,7 @@ class GlassdoorScraper(object):
                     fails += 1
                     print(f'The attempt no.{fails} to get on reviews page fails.')
                     time.sleep(120)
+        self.page = 1
         
     def getURL(self, url):
         """
@@ -315,7 +327,6 @@ class GlassdoorScraper(object):
             self._fillLocationSecondary(location)
             self._closeAddResumeWindow()
             self._clickSearchButtonSecondary()
-        self.page = 1
         time.sleep(1)
     
     def parseReview(self, review):
@@ -587,11 +598,6 @@ class GlassdoorScraper(object):
             self.getReviews()
             time.sleep(20)
             attempts += 1
-        
-        if attempts==3:
-            time.sleep(120)
-            self.getURL(self.driver.current_url)
-            self.getReviews()
 
         return len(self.reviews) > 0
 

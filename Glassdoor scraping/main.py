@@ -131,9 +131,14 @@ else:
 
 ## if url provided, the length of the url file and companies file must be the same
 if args.url:
-    if args.companies:
-        pass
+    if args.url:
+        try:
+            with open(args.url, 'r') as f:
+                urls = [line.strip() for line in f]
+        except FileNotFoundError:
+            raise Exception('The filepath given does noe exist or the format of the file is not appropriate')
     else:
+        urls = [None for company in companies]
         raise Exception('Both parameters companies and url must be given.')
 
 ## min_date | max_reivew_age
@@ -176,7 +181,7 @@ def main():
         min_date=args.min_date
     )
     
-    for company_name in companies:
+    for company_name, url in zip(companies, urls):
         scraper.getOnReviewsPage( 
             company_name=company_name,
             location=args.location,
