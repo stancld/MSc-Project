@@ -243,7 +243,8 @@ class GlassdoorScraper(object):
         
         if url:
             self.getURL(url)
-            self._sortReviewsMostRecent()
+            if 'sort.sortType=RD&sort.ascending=false' not in self.driver.current_url: # sort reviews if they are not according to the url address
+                self._sortReviewsMostRecent()
         else:
             success, fails = 0, 0
             while (success==0) & (fails < 5):
@@ -812,6 +813,7 @@ class GlassdoorScraper(object):
         :param datarow: A single record (review); type=dict
         """
         try:
+            # Create if does not exist
             reviewRecord = self.ReviewWriter(
                 Company = datarow['Company'],
                 ReviewTitle = datarow['ReviewTitle'],
