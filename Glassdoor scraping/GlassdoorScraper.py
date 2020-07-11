@@ -370,14 +370,16 @@ class GlassdoorScraper(object):
         while len(self._getContinueReadingList()) > 0:
             continueReadingPresent = 0
             attempts = 0
-            while (continueReadingPresent == 0) & (attempts < 60):
+            while (continueReadingPresent == 0) & (attempts < 15):
                 try:
                     self._getContinueReadingList()[0].click()
                     continueReadingPresent += 1
                 except:
                     attempts += 1
                     time.sleep(1)
-            time.sleep(5)
+            if attempts == 15:
+                self.getURL(self.driver.current_url) # refresh page if access is denied
+            time.sleep(np.random.uniform(1.5, 2.5))
     
     def _clickReviewsButton(self):
         """
