@@ -24,7 +24,6 @@ parser.add_argument(
 
 parser.add_argument(
     '--mysite_path',
-    default='/mnt/c/Data/UCL/@MSc Project/DB/mysite/',
     help='An absolute path to the django application containing models for the DB.\
         This is required iff output_path is not passed in.'
 )
@@ -51,7 +50,7 @@ if (args.mysite_path==None) & (args.output_path==None):
 if args.companies:
     if args.companies.split('.')[-1] not in ['xls, xlsx']:
         raise Exception(
-            'Invalid file format provided'
+            'Invalid file format provided for argument companies.'
         )
 if (args.stock_indices!=None) & (args.companies!=None):
     raise Exception(
@@ -69,7 +68,8 @@ if (args.stock_indices != ['S&P 500', 'FTSE 100', 'EURO STOXX 50']) & (args.stoc
     args.stock_indices = [stock_index.strip().strip("'") for stock_index in args.stock_indices]
 
 # Open companies
-companies = pd.read_excel(companies).to_dict('records')
+if args.companies:
+    companies = pd.read_excel(companies).to_dict('records')
 
 #######################
 ##### APPLICATION #####

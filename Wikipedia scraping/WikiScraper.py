@@ -7,6 +7,7 @@ Description: Class WikiYahooScraper used for MSc Project.
 
 # import libraries
 import time
+from datetime import datetime
 import re
 import requests
 from bs4 import BeautifulSoup
@@ -47,6 +48,7 @@ class WikiScraper(object):
 
         if CompanyWriter == None:
             # if no database is attached, pandas DataFrame are used instead
+            self.CompanyWriter = None
             self.CompanyWriterIsUsed = False
         else:
             # in othercase, CompanyWriter is stored
@@ -79,6 +81,11 @@ class WikiScraper(object):
         At this moment, it is expected scrapeWikipedia function is utilized a priori, hence the assert condition.
         """
         assert len(self.data) > 0, "Please, run self.scrapeWikipedia() first!"
+        if self.CompanyWriter:
+            dataID = len(self.CompanyWriter.objects().all()) + 1
+        else:
+            dataID = 0
+        
         for i, dataRow in enumerate(self.data):
             self.data[i].update(
                 self._getCompanyProfile(dataRow['Symbol'])
@@ -88,15 +95,18 @@ class WikiScraper(object):
                 self._getCompanyRevenue(dataRow['Symbol'])
             )
             time.sleep(2.5)
+
             self.data[i].update(
                 {
-                    'CompanyID': i, # can be substituted by more elaborated ticker in the future
-                    'Timestamp': timezone.now()
+                    'CompanyID': dataID + i, # can be substituted by more elaborated ticker in the future
+                    'Timestamp': self.timestamp()
                 }
-            )
+            )  
             
             if (i+1)%20==0:
                 print(f'{i+1:.0f} companies out of {len(self.data):.0f} scraped from Yahoo.')
+        
+        print('All companies have bee scraped from Yahoo.')
 
     def save(self, path):
         """
@@ -141,6 +151,12 @@ class WikiScraper(object):
 	        columns=self.schema
         ).to_excel(path)
 
+    def timestamp(self):
+        if self.CompanyWriter:
+            return timezone.now()
+        else:
+            return datetime.now()
+
     def writeToDjangoDB(self):
         """
         Function writing the scraped dat into an existing django database.
@@ -157,14 +173,14 @@ class WikiScraper(object):
         :param profileContent: content of profile section from Yahoo Finance in string format; type=str
         """
         try:
-            i = 0
+            i = 3
             location = re.findall(r'<!-- react-text: (\d{1,2}) -->(.+?)<!-- /react-text -->', profileContent)[i][1] 
-            while ( any( type(self._transformToInt(x))==int for x in re.split(' |-', location) ) ) & ( i<3 ):
-                i+=1
+            while ( any( type(self._transformToInt(x))==int for x in re.split(' |-', location) ) ) & ( i>0 ):
                 try:
                     location = re.findall(r'<!-- react-text: (\d{1,2}) -->(.+?)<!-- /react-text -->', profileContent)[i][1] 
                 except:
                     pass
+                i -= 1
             return location
         except:
             return str(None)
@@ -311,7 +327,7 @@ class WikiScraper(object):
         elif self.stock_index == 'FTSE 100':
             return {
                 'Company': row.findAll('td')[0].text,
-                'Symbol': row.findAll('td')[1].text,
+                'Symbol': row.findAll('td')[1].text + '.L',
                 'ListedOn': self.stock_index
             }
         

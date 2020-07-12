@@ -76,9 +76,6 @@ class GlassdoorScraper(object):
             self.driver.set_window_size(1440, 1080)
             self.driver.set_window_position(0,0)
         
-        # set the time limit after selenium driver should be reopen and a robot should re-log in glassdor
-        self.limit_to_reload = 240*60*60 # 6 hours
-        
         # store url to the glassdor reviews main page
         self.url = 'https://www.glassdoor.com/Reviews/index.htm'
         # store email & password
@@ -129,29 +126,6 @@ class GlassdoorScraper(object):
         else:
             self.data_to_save = []
 
-    def __reload__(self, location, url_to_return):
-        """
-        A function that is responsible for the following steps:
-            1. It closes all current windows.
-            2. It re-logs in to Glassdoor
-        This procedure is held in order a robot will not be kicked out of glassdoor.
-        This procedure takes place once a pre-define time limit is exceeded.
-        
-        :param location: city; type=str
-        :param url_to_return: the last url visited, which shall be loaded; type=str
-        """
-        self.driver.quit()
-        self.driver = webdriver.Chrome(
-            executable_path=self.chrome_driver_path,
-            options=self.chrome_options
-        )
-        if (not self.headless_browsing):
-            self.driver.set_window_size(1440, 1080)
-            self.driver.set_window_position(0,0)
-        
-        self.getOnReviewsPage(self.company_name, location, url=None) # must be edited
-        self.getURL(url_to_return)
-
     ######################
     ### PUBLIC METHODS ###
     ## major func first ##
@@ -192,19 +166,15 @@ class GlassdoorScraper(object):
             # save some intermediate files
             if (self.page-1) % 100==0:
                 if self.reviewWriterIsUsed:
-                    [self._writeRowToDjangoDB(datarow) for datarow in self.data]
+                    [self._writeRowToDjangoDB(datarow) for datarow in self.data if self._haveDesiredDate(datarow)]
                     self.data = []
                 else:
                     self.data_to_save.extend(self.data)
             
-            # Reload driver and re-log in to Glassdoor portal in order to avoid some unwanted kicking out of the webiste
-            if (time.time() - scraping_startTime) > self.limit_to_reload:
-                self.__reload__(location=location, url_to_return=self.driver.current_url)
-                scraping_startTime = time.time()
             # print the state
             t = time.time() - scraping_startTime
             print(
-                f"Page {self.page} reached after {t:.2f} seconds since the most recent login."
+                f"Page {self.page} reached after {t:.2f} seconds."
             )
             
         print(
@@ -245,6 +215,9 @@ class GlassdoorScraper(object):
             self.getURL(url)
             if 'sort.sortType=RD&sort.ascending=false' not in self.driver.current_url: # sort reviews if they are not according to the url address
                 self._sortReviewsMostRecent()
+            if self._isLoginRequiredWhite():
+                self._signInWhite()
+
         else:
             success, fails = 0, 0
             while (success==0) & (fails < 5):
@@ -583,11 +556,35 @@ class GlassdoorScraper(object):
         self.page += 1
         time.sleep(2)
 
+    def _haveDesiredDate(self, datarow):
+        """
+        A function that returns boolean whether a given reviews falls within a confined date range.
+        """
+        try:
+            review_date = datetime.datetime.strptime(
+                '-'.join(
+                    [str(datarow['Year']), str(datarow['Month']), str(datarow['Day'])],
+                ), '%Y-%m-%d'
+            ).date()
+            if review_date < min_date:
+                return False
+            else:
+                return True
+        except:
+            return False
+
+
     def _isLoginRequired(self):
         """
         A function that checks if login is required.
         """
         return len(self.driver.find_elements_by_name('username')) > 0
+    
+    def _isLoginRequiredWhite(self):
+        """
+        A function that checks if login is required.
+        """
+        return len(driver.find_elements_by_xpath('/html/body/div[4]/div/div/div/div/div/div/div/div[2]/div/a')) > 0
 
     def _isNextPageAvailable(self):
         """
@@ -799,6 +796,16 @@ class GlassdoorScraper(object):
         else:
             pass
     
+    def _signInWhite(self):
+        """
+        The function that logs a driver in to a Glassdoor account.
+        """
+        self.driver.find_element_by_xpath('/html/body/div[4]/div/div/div/div/div/div/div/div[2]/div/a').click()
+        self.driver.find_element_by_name('username').send_keys(self.email)
+        self.driver.find_element_by_name('password').send_keys(self.password)
+        self.driver.find_element_by_xpath('//button[@type="submit"]').click()
+        print('Login was successful.')
+    
     def _sortReviewsMostRecent(self):
         """
         This function sorts the reviews so that most recent ones are liste first.
@@ -807,14 +814,11 @@ class GlassdoorScraper(object):
         url = self.driver.current_url + '?sort.sortType=RD&sort.ascending=false'
         self.getURL(url)
     
-    def _writeRowToDjangoDB(self, datarow):
+    def _checkIfDjangoRowExist(self, datarow):
         """
-        This function takes care of writin the single review record into a Django database.
-        :param datarow: A single record (review); type=dict
         """
         try:
-            # Create if does not exist
-            reviewRecord = self.ReviewWriter(
+            self.ReviewWriter.objects.get(
                 Company = datarow['Company'],
                 ReviewTitle = datarow['ReviewTitle'],
                 Year = datarow['Year'],
@@ -831,9 +835,41 @@ class GlassdoorScraper(object):
                 ContractPeriod = datarow['ContractPeriod'],
                 Pros = datarow['Pros'],
                 Cons = datarow['Cons'],
-                AdviceToManagement = datarow['AdviceToManagement'],
-                Timestamp = datarow['Timestamp']
+                AdviceToManagement = datarow['AdviceToManagement']
             )
-            reviewRecord.save()
+            return True
+        except self.ReviewWriter.DoesNotExist:
+            return False
+    
+    def _writeRowToDjangoDB(self, datarow):
+        """
+        This function takes care of writin the single review record into a Django database.
+        :param datarow: A single record (review); type=dict
+        """
+        try:    
+            if not self._checkIfDjangoRowExist(datarow):
+                reviewRecord = self.ReviewWriter(
+                    Company = datarow['Company'],
+                    ReviewTitle = datarow['ReviewTitle'],
+                    Year = datarow['Year'],
+                    Month = datarow['Month'],
+                    Day = datarow['Day'],
+                    Rating = datarow['Rating'],
+                    JobTitle = datarow['JobTitle'],
+                    EmployeeRelationship = datarow['EmployeeRelationship'],
+                    Location = datarow['Location'],
+                    Recommendation = datarow['Recommendation'],
+                    Outlook = datarow['Outlook'],
+                    OpinionOfCEO = datarow['OpinionOfCEO'],
+                    Contract = datarow['Contract'],
+                    ContractPeriod = datarow['ContractPeriod'],
+                    Pros = datarow['Pros'],
+                    Cons = datarow['Cons'],
+                    AdviceToManagement = datarow['AdviceToManagement'],
+                    Timestamp = datarow['Timestamp']
+                )
+                reviewRecord.save()
+            else:
+                pass
         except Exception as e:
             print(e)
