@@ -164,10 +164,13 @@ class GlassdoorScraper(object):
             self._goNextPage()
 
             # save some intermediate files
-            if (self.page-1) % 100==0:
+            if (self.page-1) % 50==0:
                 if self.reviewWriterIsUsed:
-                    [self._writeRowToDjangoDB(datarow) for datarow in self.data if self._haveDesiredDate(datarow)]
+                    [self._writeRowToDjangoDB(datarow) for datarow in self.data]
                     self.data = []
+                    print(
+                        f"Part of reviews for {self.company_name} has been scraped and stored."
+                    )       
                 else:
                     self.data_to_save.extend(self.data)
             
@@ -584,7 +587,7 @@ class GlassdoorScraper(object):
         """
         A function that checks if login is required.
         """
-        return len(driver.find_elements_by_xpath('/html/body/div[4]/div/div/div/div/div/div/div/div[2]/div/a')) > 0
+        return len(self.driver.find_elements_by_xpath('/html/body/div[4]/div/div/div/div/div/div/div/div[2]/div/a')) > 0
 
     def _isNextPageAvailable(self):
         """
@@ -803,7 +806,8 @@ class GlassdoorScraper(object):
         self.driver.find_element_by_xpath('/html/body/div[4]/div/div/div/div/div/div/div/div[2]/div/a').click()
         self.driver.find_element_by_name('username').send_keys(self.email)
         self.driver.find_element_by_name('password').send_keys(self.password)
-        self.driver.find_element_by_xpath('//button[@type="submit"]').click()
+        element = self.driver.find_element_by_xpath('//button[@type="submit"]')
+        self.driver.execute_script("arguments[0].click();", element)
         print('Login was successful.')
     
     def _sortReviewsMostRecent(self):

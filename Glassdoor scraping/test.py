@@ -29,6 +29,10 @@ driver.find_element_by_name('password').send_keys('q12')
 driver.find_element_by_xpath('//button[@type="submit"]')
 
 
+A = [101, 201, 301, 401]
+for a in A:
+    if (a-1)%100 == 0:
+        print(a)
 
 credentials = '/mnt/c/Data/UCL/@MSc Project - Data and sources/credentials.json'
 with open(args.credentials) as f:
