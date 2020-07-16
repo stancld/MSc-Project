@@ -10,19 +10,20 @@
 <hr>
 
 ## Abstract
-This thesis investigates employee sentiment proxied by ratings and reviews posted on Glassdoor.com and incorporation of this information into the multi-factor credit scoring model as a part of an Environmental, social and corporate governance (ESG) investing approach. While sentiment analysis is quite a well-known tool for probing into how companies are perceived by the general public, it is a novel idea to exploit sentiment of employees and thus to scrutinise companies rather from bottom to top, which enables capture very important information for assessing companies' governance. An endeavour to consider the usage of alternative data arises from difficulties of incorporating a variety of factors into fixed income portfolios compared to well-defined factors for equity portfolios.
+This thesis investigates the relationship between employee sentiment, proxied by [Glassdoor](https://www.glassdoor.com) reviews and ratings, and excessive returns on corresponding bonds. While sentiment analysis is well studied for probing into how companies are perceived by investors or the general public, it is a novel idea to exploit sentiment of employees, which enables us to capture very important information for assessing companies' governance. Although a few studies scrutinising the relation employee sentiment and future stock returns have already appeared, this is the first attempt, to the best of my knowledge, to place this analysis to the universe of corporate bonds.
 
-This research was conducted in collaboration with Fidelity International and presents a series of experiments that examine how employees' feelings about corporate consciousness and practices might be utilized as an indicator of returns on corporate bonds. This project was prepared as a separate piece of work in a group of students participating in ESG-oriented research under the supervision of Prof. Philip Treleaven. Furthermore, greatly kind representatives of Glassdoor.com granted us express permission to use publicly available data on their websites, therefore made this project viable.
+This research was conducted in collaboration with Fidelity International and entails a series of experiments that examine how employees' feelings might be utilized as an indicator of returns on corporate bonds. This project was prepared as a separate piece of work, in cooperation with an ESG-oriented research group under the supervision of Prof. Philip Treleaven. 
 
-The thesis consists of the following experiments:
 
-1. Data Retrieval and Database Pipeline. This work engineers a pipeline for scraping employee reviews and related information from Glassdoor.com using a Python's Selenium-based crawler and subsequently storing them in the database built using Django making the data easily available for possible future endeavours of other students and researchers.
+The thesis consists of the following four components - a data retrieval pipeline, two experiments and an exploratory analysis:
 
-2. Comparison of the Effect of Different Sentiment Scoring Methods on Generating Alpha. This experiment investigates the utilization of NLP sentiment analysis of employee reviews into the multi-factor credit scoring model, as a part of ESG risk assessment framework, and their effect of generated alpha by own constructed factor long-short portfolio.
+1. Data Retrieval and Database Pipeline. This work engineers a pipeline for scraping employee reviews and related information from [Glassdoor](https://www.glassdoor.com) using a Python's Selenium-based crawler and subsequently storing them in the database built using Django making the data easily available for possible future endeavours of other students and researchers.
 
-3. Comparison of the Effect of the Best Sentiment Scoring Method against the Usage of Reviews on Generating Alpha. This study further examines whether NLP sentiment analysis provides any additional piece of information compared by more simply derived employee sentiment, proxied by ratings, for generating excessive returns of factor portfolios.
+2. Comparison of Different Sentiment Scoring Methods in Generating Alpha. This experiment investigates the utilization of NLP sentiment analysis of employee reviews into a multi-factor credit scoring model, as a part of ESG investing framework, and their power in generating alpha by own constructed factor long-short portfolio.
 
-4. item Exploratory Analysis of Ratings and Reviews. Since analyses of reviews and ratings from Glassdoor.com and similar platforms are quite scarce, mainly because of unavailability of any public API, a thorough exploratory analysis of the scraped data is conducted as a part of this thesis and is presented at Appendix.
+3. Comparison of the Best Sentiment Scoring Method against the Usage of Reviews in Generating Alpha. This study further examines whether NLP sentiment analysis provides any additional piece of information compared with a simpler proxy for exmployee sentiment, star ratings, for generating excessive returns of factor portfolios.
+
+4. Exploratory Analysis of Ratings and Reviews. Since analyses of reviews and ratings from [Glassdoor](https://www.glassdoor.com) and similar platforms are quite scarce, mainly because of unavailability of any public API, a thorough exploratory analysis of the scraped data is conducted as a part of this thesis and is presented at Appendix.
 
 The following approaches are considered for sentiment scoring methods:
 
