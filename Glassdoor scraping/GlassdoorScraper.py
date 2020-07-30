@@ -216,6 +216,7 @@ class GlassdoorScraper(object):
         
         if url:
             self.getURL(url)
+            time.sleep(0.5)
             if 'sort.sortType=RD&sort.ascending=false' not in self.driver.current_url: # sort reviews if they are not according to the url address
                 self._sortReviewsMostRecent()
             if self._isLoginRequiredWhite():
@@ -241,7 +242,16 @@ class GlassdoorScraper(object):
                     fails += 1
                     print(f'The attempt no.{fails} to get on reviews page fails.')
                     time.sleep(120)
-        self.page = 1
+        
+        # get page counter
+        if 'sort.sortType=RD&sort.ascending=false' in self.driver.current_url:
+            try:
+                self.page = int(re.findall('_P(.+?).htm', self.driver.current_url)[0])
+            except Exception as e:
+                self.page = 1
+                print(e)
+        else:
+            self.page = 1
         
     def getURL(self, url):
         """
