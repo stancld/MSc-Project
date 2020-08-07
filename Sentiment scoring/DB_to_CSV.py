@@ -1,5 +1,5 @@
 """
-File: 1. DB to CSV.py
+File: DB_to_CSV.py
 Author: Daniel Stancl
 
 Description: This file contains the source code for extracting the records
@@ -19,23 +19,30 @@ class DB_to_CSV():
         self.Company = Company
         self.Review = Review
 
-    def run(self, company_filename, review_filename):
+    def run(self, company_filename, review_filename, save=False):
         """
         High level implementation of transforming DB records into the CSV.
         """
-        companies = self._companiesToDF()
-        reviews = self._reviewsToDF()
-        reviews = self._mergeReviewsWithCompanies(reviews, companies)
-        reviews['Date'] = self._generateDateColumn(reviews)
-        reviews['Year-Month'] = self._generateYM_Column(reviews)
-        self._save(
-            companies, company_filename,
-            reviews, review_filename
-        )
+        self._companiesToDF()
+        self._reviewsToDF()
+        self._mergeReviewsWithCompanies()
+        
+        self.reviews['Review'] = self._generateReviewColumn()
+        self.reviews['ReviewLentgth'] = self._generateReviewLengthColumn()
+        self.reviews['Date'] = self._generateDateColumn()
+        self.reviews['Year-Month'] = self._generateYM_Column()
+
+        self.reviews['EmployeeRelationship'] = [self._update_EmployeeRelationship(self.reviews.loc[row, 'EmployeeRelationship']) for row in self.reviews.index]
+        
+        if save==True:
+            self._save(company_filename, review_filename)
+        else:
+            pass
+        return self.companies, self.reviews
 
     ### HELPER FUNCTIONS ###
     def _companiesToDF(self):
-        companies = pd.DataFrame(
+        self.companies = pd.DataFrame(
             list(
                 self.Company
                 .objects
@@ -43,10 +50,9 @@ class DB_to_CSV():
                 .all()
             )
         )
-        return companies
 
     def _reviewsToDF(self):
-        reviews = pd.DataFrame(
+        self.reviews = pd.DataFrame(
             list(
                 self.Review
                 .objects
@@ -58,33 +64,46 @@ class DB_to_CSV():
                 .all()
             )
         )
-        return reviews
 
-    def _mergeReviewsWithCompanies(self, reviews, companies):
-        reviews = reviews.merge(
-            companies[['id', 'Company', 'Sector', 'ListedOn']].rename(columns={'id': 'Company_id'}),
+    def _mergeReviewsWithCompanies(self):
+        self.reviews = self.reviews.merge(
+            self.companies[['id', 'Company', 'Sector', 'ListedOn']].rename(columns={'id': 'Company_id'}),
             on='Company_id'
         )
-        return reviews
 
-    def _generateDateColumn(self, reviews):
-        Date = reviews.apply(lambda x: '-'.join(
+    def _generateDateColumn(self):
+        Date = self.reviews.apply(lambda x: '-'.join(
             [str(x['Year']), str(x['Month']), str(x['Day'])]
             ), axis=1
         )
         return np.array(
-            self._string_to_date(date) for date in Date
+            [self._string_to_date(date) for date in Date]
         )
 
-    def _generateYM_Column(self, reviews):
-        return reviews.apply(lambda x: self._string_to_YM('-'.join(
+    def _generateYM_Column(self):
+        return self.reviews.apply(lambda x: self._string_to_YM('-'.join(
             [str(x['Year']), str(x['Month'])])
             ), axis=1
         )
 
-    def _save(self, companies, company_filename, reviews, review_filename):
-        companies.to_csv(company_filename)
-        reviews.to_csv(review_filename)
+    def _generateReviewColumn(self):
+        return self.reviews['Pros'] + ' ' + self.reviews['Cons']
+    
+    def _generateReviewLengthColumn(self):
+        return self.reviews['Review'].apply(lambda x: len(x))
+
+    def _update_EmployeeRelationship(self, x):
+        """
+        Fix employee relationship as sometimes, parsing problems etc may occur.
+        """
+        if x not in ['Current Employee', 'Former Employee']:
+            return 'Not specified'
+        else:
+            return x
+
+    def _save(self, company_filename, review_filename):
+        self.companies.to_csv(company_filename)
+        self.reviews.to_csv(review_filename)
     
     def _string_to_date(self, date_str):
         try:
