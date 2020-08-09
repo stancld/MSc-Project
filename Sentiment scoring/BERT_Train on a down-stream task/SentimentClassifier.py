@@ -39,4 +39,5 @@ class BERT_SentimentClassifier(LightningModule):
         return output # logits
 
     def prepare_data(self):
+        pass
 
