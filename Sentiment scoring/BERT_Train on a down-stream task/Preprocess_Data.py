@@ -4,8 +4,6 @@ import torch
 import transformers
 from transformers import BertTokenizer
 
-from Preprocess_Data import PrepareData
-
 ### MAIN ###
 class PrepareData(object):
 

@@ -39,8 +39,8 @@ max_length = max(data['review'].apply(lambda x: len(x)))
 X = pd.DataFrame(
     columns=['a', 'b', 'c']
 )
-X['a']=data['review'][:100].apply(lambda x: sentence_to_ids(x))
-X['b'] = X['a'].apply(lambda x: x['input_ids'])
+data['review'][:2].apply(lambda x: sentence_to_ids(x))
+b = X.apply(lambda x: x['input_ids'].numpy())
 X['c'] = X['a'].apply(lambda x: x['attention_mask'])
 
 torch.tensor(np.array(X[['b','c']]))
@@ -51,7 +51,7 @@ def sentence_to_ids(review):
         max_length=512,
         truncation=True,
         add_special_tokens=True, # Add '[CLS]' and '[SEP]'
-        return_token_type_ids=False,
+        return_token_type_ids=True,
         pad_to_max_length=True,
         return_attention_mask=True,
         return_tensors='pt',  # Return PyTorch tensors
@@ -67,13 +67,19 @@ tokenizer.encode_plus(
         max_length=64,
         truncation=True,
         add_special_tokens=True, # Add '[CLS]' and '[SEP]'
-        return_token_type_ids=False,
+        return_token_type_ids=True,
         pad_to_max_length=True,
         return_attention_mask=True,
         return_tensors='pt',  # Return PyTorch tensors
-    )
+)
 
 
-a=torch.tensor(
+X=torch.tensor(
     [[1,2,3], [2,3,4], [4,5,6]]
 )
+
+y = torch.tensor(
+    [1,0,1]
+)
+
+torch.tensor((X, y))
