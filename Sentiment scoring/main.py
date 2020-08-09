@@ -16,9 +16,14 @@ import pandas as pd
 import django
 from set_django_db import set_django_db
 
+import torch
+from transformers import BertTokenizer, BertForSequenceClassification, BertForQuestionAnswering
+
 # Import own functions/classes
 from DB_to_CSV import DB_to_CSV
 from Filtering import Filter
+from ScoreSentiment_Rating import ScoreSentiment_Rating
+from ScoreSentiment_Reviews import ScoreSentiment_Reviews
 
 # parameters/arguments
 parser = ArgumentParser()
@@ -39,7 +44,13 @@ parser.add_argument(
 parser.add_argument(
     '--review_path',
     default='/mnt/c/Data/UCL/@MSc Project - Data and Sources/reviews.csv',
-    help='An absolute path of an ouptut CSV files containing revies.'
+    help='An absolute path of an ouptut CSV files containing reviews.'
+)
+
+parser.add_argument(
+    '--sentiment_path',
+    default='/mnt/c/Data/UCL/@MSc Project - Data and Sources/Sentiment results/',
+    help='An absolute path of an ouptut CSV files containing sentiment results.'
 )
 
 parser.add_argument(
@@ -60,11 +71,24 @@ parser.add_argument(
     help='All companies having less than `min_reviews` reviews are to be dropped.'
 )
 
+parser.add_argument(
+    '--periods',
+    help='Pass length of rolling windows used for calculating sentiment over longer than month period\
+        format=string with | used as delimeters, i.e. "3 | 4 | 6"'
+
+)
+
 args = parser.parse_args()
 
 # change str format of min/max_date to datetime format
 args.min_date = datetime.strptime(args.min_date,'%Y-%m-%d')
 args.max_date = datetime.strptime(args.max_date,'%Y-%m-%d')
+
+# parse periods 
+try:
+    periods = [int(period.strip()) for period in args.periods.split('|')]
+except:
+    periods = []
 
 #######################
 ##### APPLICATION #####
@@ -87,6 +111,16 @@ def main():
     companies, reviews = filtering.run(args.min_date, args.max_date, args.min_reviews)
     print('2/4 Done - Filtering was completed.')
 
+    # 3. Employee sentiment based on ratings
+    scoreSentiment_rating = ScoreSentiment_Rating(companies, reviews)
+    scoreSentiment_rating.run(args.sentiment_path, periods)
+    print('3/4 Done - Sentiment was scored based on ratings.')
+
+    # 3. Employee sentiment based on ratings
+    scoreSentiment_reviews = ScoreSentiment_Reviews(companies, reviews)
+    scoreSentiment_reviews.run('/mnt/c/Data/UCL/abc.xlsx', periods)
+    print('4/4 Done - Sentiment was scored based on reviews.')
+    
     print(reviews.head())
 
 if __name__=='__main__':

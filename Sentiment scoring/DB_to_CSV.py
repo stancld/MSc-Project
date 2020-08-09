@@ -102,8 +102,8 @@ class DB_to_CSV():
             return x
 
     def _save(self, company_filename, review_filename):
-        self.companies.to_csv(company_filename)
-        self.reviews.to_csv(review_filename)
+        self.companies.to_csv(company_filename, index=False)
+        self.reviews.to_csv(review_filename, index=False)
     
     def _string_to_date(self, date_str):
         try:

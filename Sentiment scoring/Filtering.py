@@ -20,7 +20,7 @@ class Filter(object):
         return self.companies, self.reviews
 
     def _dateFiltering(self, min_date, max_date):
-        return pd.DataFrame(
+        self.reviews = pd.DataFrame(
             self.reviews[(self.reviews.Date >= min_date) & (self.reviews.Date <= max_date)]
         )
 
@@ -40,5 +40,3 @@ class Filter(object):
 
         self.companies = self.companies[self.companies.Company.isin(companies_filtered)]
         self.reviews = self.reviews[self.reviews.Company.isin(companies_filtered)]
-        
-
