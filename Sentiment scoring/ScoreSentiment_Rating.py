@@ -13,11 +13,11 @@ class ScoreSentiment_Rating(object):
         self.companies = companies
         self.reviews = reviews
     
-    def run(self, sentiment_path, periods):
-        self.sentimentMonthly(sentiment_path)
-        [self.sentimentCustom(period, sentiment_path) for period in periods]
+    def run(self, sentiment_path, periods, difference):
+        self.sentimentMonthly(sentiment_path, difference)
+        [self.sentimentCustom(period, sentiment_path, difference) for period in periods]
 
-    def sentimentMonthly(self, sentiment_path, _return=False):
+    def sentimentMonthly(self, sentiment_path, difference, _return=False):
         sentiment = pd.DataFrame(
             pd.DataFrame(
                 self.reviews
@@ -31,9 +31,6 @@ class ScoreSentiment_Rating(object):
         self.sentiment_rating = pd.pivot_table(sentiment, 'Rating', index='Company', columns='Year-Month', fill_value=None)
         self.sentiment_count = pd.pivot_table(sentiment, 'Count', index='Company', columns='Year-Month', fill_value=0)
 
-        if _return:
-            return self.sentiment_rating, self.sentiment_count
-
         # save
         fname = f"{sentiment_path}Sentiment_Rating_1M.csv"
         self.sentiment_rating.to_csv(fname)
@@ -41,7 +38,18 @@ class ScoreSentiment_Rating(object):
         fname = f"{sentiment_path}Sentiment_Count_1M.csv"
         self.sentiment_count.to_csv(fname)
 
-    def sentimentCustom(self, period, sentiment_path, _return=False):
+        # compute difference
+        if difference:
+            sentiment_diff = self._sentimentDifference(
+                data=self.sentiment_rating,
+            )
+            fname = f"{sentiment_path}Sentiment_Rating_Diff_1M.csv"
+            sentiment_diff.to_csv(fname)
+
+        if _return:
+            return self.sentiment_rating, self.sentiment_count, self.sen
+
+    def sentimentCustom(self, period, sentiment_path, difference, _return=False):
         sentimentSums = self.sentiment_count * self.sentiment_rating
         
         rollingCounts = (
@@ -70,5 +78,28 @@ class ScoreSentiment_Rating(object):
         fname = f"{sentiment_path}Sentiment_Rating_{period}M.csv"
         rollingSentiment.to_csv(fname)
 
+        # compute difference
+        if difference:
+            sentiment_diff = self._sentimentDifference(
+                data=rollingSentiment
+            )
+            fname = f"{sentiment_path}Sentiment_Rating_Diff_{period}M.csv"
+            sentiment_diff.to_csv(fname)
+
         if _return:
-            return rollingSentiment
+            return rollingSentiment, sentiment_diff
+
+    def _sentimentDifference(self, data):
+        sentimentDiff = (
+            data
+            .T
+            .rolling(window=2)
+            .apply(lambda x: self._diff_function(x))
+            .T
+        )
+        return sentimentDiff
+    
+    def _diff_function(self, x):
+        return x.iloc[1] - x.iloc[0]
+
+        

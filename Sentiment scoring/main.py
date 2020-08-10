@@ -78,6 +78,12 @@ parser.add_argument(
 
 )
 
+parser.add_argument(
+    '-D', '--difference',
+    action='store_true',
+    help='Indication whether difference should be computed.'
+)
+
 args = parser.parse_args()
 
 # change str format of min/max_date to datetime format
@@ -113,13 +119,13 @@ def main():
 
     # 3. Employee sentiment based on ratings
     scoreSentiment_rating = ScoreSentiment_Rating(companies, reviews)
-    scoreSentiment_rating.run(args.sentiment_path, periods)
+    scoreSentiment_rating.run(args.sentiment_path, periods, args.difference)
     print('3/4 Done - Sentiment was scored based on ratings.')
 
-    # 3. Employee sentiment based on ratings
-    scoreSentiment_reviews = ScoreSentiment_Reviews(companies, reviews)
-    scoreSentiment_reviews.run('/mnt/c/Data/UCL/abc.xlsx', periods)
-    print('4/4 Done - Sentiment was scored based on reviews.')
+    # 4. Employee sentiment based on reviews
+    #scoreSentiment_reviews = ScoreSentiment_Reviews(companies, reviews)
+    #scoreSentiment_reviews.run('/mnt/c/Data/UCL/abc.xlsx', periods)
+    #print('4/4 Done - Sentiment was scored based on reviews.')
     
     print(reviews.head())
 
