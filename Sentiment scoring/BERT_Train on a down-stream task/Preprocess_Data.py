@@ -57,7 +57,7 @@ class PrepareData(object):
     def _sentence_to_ids(self, review):
         return self.tokenizer.encode_plus(
             review,
-            max_length=512,
+            max_length=200, # ideally to be set after data exploration
             truncation=True,
             add_special_tokens=True, # Add '[CLS]' and '[SEP]'
             return_token_type_ids=True,

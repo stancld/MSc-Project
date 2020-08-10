@@ -1,0 +1,6 @@
+BERT_parameters = {
+    'PRE_TRAINED_MODEL_NAME': 'bert-base-cased',
+    'DROPOUT_PROB': 0.3,
+    'N_CLASSES: 3,
+    'DATA_PATH: '',
+}
