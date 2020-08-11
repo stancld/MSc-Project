@@ -22,13 +22,16 @@ class BERT_SentimentClassifier(LightningModule):
     """
     """
     def __init__(self, **kwargs):
-        super(BERT_SentimentClassifier, self).__init__()
+        super(BERT_SentimentClassifier, self).__init__()   
+        self.save_hyperparameters()
         self.bert = BertModel.from_pretrained(kwargs['PRE_TRAINED_MODEL_NAME'])
         self.dropout = nn.Dropout(p=kwargs['DROPOUT_PROB'])
         self.out = nn.Linear(self.bert.config.hidden_size, kwargs['N_CLASSES'])
 
         self.batch_size = kwargs['BATCH_SIZE']
         self.n_epochs = kwargs['N_EPOCHS']
+        self.num_workers = kwargs['NUM_WORKERS']
+        self.learning_rate = kwargs['LEARNING_RATE']
 
         self.data_path = kwargs['DATA_PATH']
         self.data_components = self._getDataComponents()
@@ -57,10 +60,18 @@ class BERT_SentimentClassifier(LightningModule):
         self._generateDatasets()
 
     def train_dataloader(self):
-        return DataLoader(dataset=self.train_data, batch_size=self.batch_size)
+        return DataLoader(
+            dataset=self.train_data,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers
+        )
 
     def val_dataloader(self):
-        return DataLoader(dataset=self.val_data, batch_size=self.batch_size)
+        return DataLoader(
+            dataset=self.val_data,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers
+        )
 
     """
     def test_dataloader(self):
@@ -75,7 +86,7 @@ class BERT_SentimentClassifier(LightningModule):
     """
 
     def configure_optimizers(self):
-        optimizer = AdamW(self.parameters(), lr=2e-5, correct_bias=False)
+        optimizer = AdamW(self.parameters(), lr=self.learning_rate, correct_bias=False)
         num_training_steps = (self.input_ids_train.shape[0] // self.batch_size) * self.n_epochs
         scheduler = get_linear_schedule_with_warmup(
             optimizer,
@@ -99,14 +110,14 @@ class BERT_SentimentClassifier(LightningModule):
         return {'val_loss': loss, 'correct': correct}
 
     def training_epoch_end(self, outputs):
-        avg_loss = torch.stack(x['train_loss'] for x in outputs).mean()
+        avg_loss = torch.stack([x['loss'] for x in outputs]).mean()
         tensorboard_logs = {'train_loss': avg_loss}
         return {'avg_train_loss': avg_loss, 'log': tensorboard_logs}
 
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
         accuracy = sum([x['correct'] for x in outputs]) / (self.batch_size * len([x['correct'] for x in outputs]))
-        tensorboard_logs = {'val_loss': avg_loss, 'accuracy': 'accuracy'}
+        tensorboard_logs = {'val_loss': avg_loss, 'accuracy': accuracy}
         return {'avg_val_loss': avg_loss, 'accuracy': accuracy, 'log': tensorboard_logs}
     
     def _checkIfFilesInPath(self):
@@ -140,10 +151,12 @@ class BERT_SentimentClassifier(LightningModule):
         split = random(self.dim)
         # train
         for data in self.data_components.keys():
-            exec(f"self.{data}_train = self.{data}[split <= 0.8]", locals())
+            exec(f"self.{data}_train = self.{data}[:32]", locals())
+            'exec(f"self.{data}_train = self.{data}[split <= 0.8]", locals())'
         # val
         for data in self.data_components.keys():
-            exec(f"self.{data}_val = self.{data}[(split > 0.8) & (split <= 0.9)]", locals())
+            exec(f"self.{data}_val = self.{data}[32:64]", locals())
+            'exec(f"self.{data}_val = self.{data}[(split > 0.8) & (split <= 0.9)]", locals())'
         # test
         for data in self.data_components.keys():
             exec(f"self.{data}_test = self.{data}[split > 0.9]", locals())

@@ -23,15 +23,20 @@ from SentimentClassifier import BERT_SentimentClassifier
 BERT_parameters = {
     'PRE_TRAINED_MODEL_NAME': 'bert-base-cased',
     'BATCH_SIZE': 32,
+    'NUM_WORKERS': 40,
     'DROPOUT_PROB': 0.3,
     'N_CLASSES': 3,
-    'N_EPOCHS': 3,
+    'N_EPOCHS': 1,
+    'LEARNING_RATE': 4e-5,
     'DATA_PATH': '/mnt/c/Data/UCL/@MSc Project - Data and sources/Sentiment training/',
 }
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
 clf = BERT_SentimentClassifier(**BERT_parameters)
 
-trainer = Trainer()
+
+# instantiate trainer
+trainer = Trainer(
+    max_epochs=BERT_parameters['N_EPOCHS']
+)
+# training
 trainer.fit(clf)

@@ -2,8 +2,10 @@ beautifulsoup4==4.9.1
 django==3.0.6
 numpy
 pandas
+pytorch-ligthning==0.8.5
 requests==2.23.0
 selenium==3.141.0
-torch==1.5.0
+tensorboard==2.3.0
+torch==1.6.0
 transformers==2.10.0
 wordcloud==1.7.0
