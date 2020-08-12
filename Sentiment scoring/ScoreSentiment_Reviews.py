@@ -1,15 +1,33 @@
+# import libraries and settings
+import os
+from os import listdir
+from os.path import isfile, join
+
 import numpy as np
+from numpy.random import random, seed
 import pandas as pd
-from transformers import BertTokenizer, BertForSequenceClassification
+
 import torch
+from torch import nn, optim
+import torch.nn.functional as F
+from torch.utils.data import Dataset, TensorDataset, DataLoader
+
+import pytorch_lightning as pl
+from pytorch_lightning import LightningModule, Trainer
+
+import transformers
+from transformers import BertModel, BertTokenizer, AdamW, get_linear_schedule_with_warmup
+
+# change directory and import SentimentClassifier
+cwd = os.getcwd()
+os.chdir('BERT_Train on a down-stream task')
+from SentimentClassifier import BERT_SentimentClassifier
+os.chdir(cwd)
 
 class ScoreSentiment_Reviews(object):
     def __init__(self, companies, reviews):
         self.companies = companies
         self.reviews = reviews
-
-        self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-        self.bert = BertForSequenceClassification.from_pretrained('bert-base-uncased')
 
     def run(self, sentiment_path, periods):
         self.sentimentMonthly(sentiment_path)

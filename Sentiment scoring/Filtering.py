@@ -8,15 +8,18 @@ w.r.t. date and a count.
 import numpy as np
 import pandas as pd
 from datetime import datetime
+from os.path import join
 
 class Filter(object):
     def __init__(self, companies, reviews):
         self.companies = companies
         self.reviews = reviews
     
-    def run(self, min_date, max_date, min_reviews):
+    def run(self, min_date, max_date, min_reviews, output_path):
         self._dateFiltering(min_date, max_date)
         self._dropNegligible(min_reviews)
+        self.companies.to_csv(join(output_path, 'companies_filtered.csv'))
+        self.reviews.to_csv(join(output_path, 'reviews_filtered.csv'))
         return self.companies, self.reviews
 
     def _dateFiltering(self, min_date, max_date):

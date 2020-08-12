@@ -8,6 +8,7 @@ Subsequently, the data are filtered and sentiment scores are computed.
 """
 
 # Import libraries
+from os.path import join
 import time
 from datetime import datetime
 from argparse import ArgumentParser
@@ -23,7 +24,6 @@ from transformers import BertTokenizer, BertForSequenceClassification, BertForQu
 from DB_to_CSV import DB_to_CSV
 from Filtering import Filter
 from ScoreSentiment_Rating import ScoreSentiment_Rating
-from ScoreSentiment_Reviews import ScoreSentiment_Reviews
 
 # parameters/arguments
 parser = ArgumentParser()
@@ -114,7 +114,7 @@ def main():
 
     # 2. Filtering - Drop companies with less than 10 reviews in total
     filtering = Filter(companies, reviews)
-    companies, reviews = filtering.run(args.min_date, args.max_date, args.min_reviews)
+    companies, reviews = filtering.run(args.min_date, args.max_date, args.min_reviews, args.sentiment_path)
     print('2/4 Done - Filtering was completed.')
 
     # 3. Employee sentiment based on ratings
@@ -123,11 +123,7 @@ def main():
     print('3/4 Done - Sentiment was scored based on ratings.')
 
     # 4. Employee sentiment based on reviews
-    #scoreSentiment_reviews = ScoreSentiment_Reviews(companies, reviews)
-    #scoreSentiment_reviews.run('/mnt/c/Data/UCL/abc.xlsx', periods)
-    #print('4/4 Done - Sentiment was scored based on reviews.')
     
-    print(reviews.head())
 
 if __name__=='__main__':
     main()

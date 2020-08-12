@@ -7,7 +7,6 @@ columns with employee sentiment for companies in a given month/ over a given per
 """
 import pandas as pd
 
-
 class ScoreSentiment_Rating(object):
     def __init__(self, companies, reviews):
         self.companies = companies
@@ -16,6 +15,7 @@ class ScoreSentiment_Rating(object):
     def run(self, sentiment_path, periods, difference):
         self.sentimentMonthly(sentiment_path, difference)
         [self.sentimentCustom(period, sentiment_path, difference) for period in periods]
+
 
     def sentimentMonthly(self, sentiment_path, difference, _return=False):
         sentiment = pd.DataFrame(
@@ -101,5 +101,3 @@ class ScoreSentiment_Rating(object):
     
     def _diff_function(self, x):
         return x.iloc[1] - x.iloc[0]
-
-        
