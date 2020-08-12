@@ -43,7 +43,6 @@ class PorfolioConstruction(object):
         if self.use_ratings and self.use_longterm and self.use_diff:
             self.create_portfolios('Rating', '3M', use_diff=True)
 
-
     
     def create_portfolios(self, sentiment_base, creation_period, use_diff=False):
         try:

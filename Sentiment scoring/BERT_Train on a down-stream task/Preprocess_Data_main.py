@@ -26,6 +26,10 @@ parser.add_argument(
     '--columns',
     default='positives | negatives | overall'
 )
+parser.add_argument(
+    '--balanced',
+    action='store_true'
+)
 
 args = parser.parse_args()
 args.columns = [column.strip() for column in args.columns.split('|')]
@@ -33,7 +37,7 @@ args.columns = [column.strip() for column in args.columns.split('|')]
 
 def main():
     data_loader = PrepareData(args.pretrained_model_name)
-    data_loader.run(args.data_path, args.columns, args.torch_path)
+    data_loader.run(args.data_path, args.columns, args.torch_path, args.balanced)
 
 if __name__=='__main__':
     main()

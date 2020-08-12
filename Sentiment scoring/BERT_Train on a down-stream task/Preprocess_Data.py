@@ -23,7 +23,9 @@ class PrepareData(object):
             'input_ids', 'token_type_ids', 'attention_mask', 'sentiment'
         ]
 
-    def run(self, data_path, columns, torch_path):
+        self.len_limit = 300
+
+    def run(self, data_path, columns, torch_path, balanced):
         # sanity checks
         if not isinstance(columns, list):
             raise TypeError('columns must be a list')
@@ -41,6 +43,9 @@ class PrepareData(object):
         # select columns, make concatenation and transform rating to sentiment if desired
         self.data = self.data[columns]
         self._transform_input_columns(columns)
+        self._drop_tooLongReviews()
+        if balanced:
+            self._make_balanced_data()
         self._transform_inputs()
         
         # save data as tensors to be simply loadable in PyTorch Lightning
@@ -57,7 +62,7 @@ class PrepareData(object):
     def _sentence_to_ids(self, review):
         return self.tokenizer.encode_plus(
             review,
-            max_length=200, # ideally to be set after data exploration
+            max_length=self.len_limit, # ideally to be set after data exploration
             truncation=True,
             add_special_tokens=True, # Add '[CLS]' and '[SEP]'
             return_token_type_ids=True,
@@ -75,6 +80,26 @@ class PrepareData(object):
             self.data['sentiment'] = self.data['overall'].apply(lambda rating: self._rating_to_sentiment(rating))
         else:
             self.data['sentiment'] = self.data['sentiment'].apply(lambda sentiment: torch.tensor((sentiment,)))
+
+    def _drop_tooLongReviews(self):
+        self.data['ok'] = self.data['review'].apply(lambda x: len(x.split())) <= (1.2*self.len_limit)
+        self.data = self.data[self.data.ok==True]
+
+    def _make_balanced_data(self):
+        self.data['sentiment_item'] = self.data['sentiment'].apply(lambda x: x.item())
+        class_count = (
+            self.data
+            .groupby('sentiment_item')
+            .count()
+            .review
+        )
+        class_countToBeDropped = class_count - class_count.min()
+        for sentiment in class_countToBeDropped.index:
+            self.data.drop(
+                self.data[self.data['sentiment_item']==sentiment].sample(class_countToBeDropped[sentiment]).index,
+                axis=0, inplace=True
+            )
+        self.data.drop('sentiment_item', axis=1, inplace=True)
 
     def _transform_inputs(self):
         self.data['INPUT_and_MASK'] = self.data['review'].apply(lambda review: self._sentence_to_ids(review))
