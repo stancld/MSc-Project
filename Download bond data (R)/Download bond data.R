@@ -1,31 +1,31 @@
 ## import libraries ###
 library(Rblpapi)
+library(rlist)
 
-### set global variables ###
+### set global variables and loda data###
+bond_path <- 'C:\\Data\\UCL\\companies_bonds_list_1.csv'
+bonds_df <- read.csv(bond_path)
+
 
 ### connection ###
 blpConnect(host = getOption("blpHost", "localhost"),
            port = getOption("blpPort", 8194L), default = TRUE,
-           appName = getOption("blpAppName", NULL))
-
-### options ###
-field_names <- c("PX_BID", "PX_ASK")
-start_date <- as.Date("2018-01-01")
-opt <- c("periodicitySelection"="MONTHLY")
-
-
-bonds = c(
-  "ABT 2.55 03/15/2022 CORP",
-  "ABT 4.9 11/30/2046 CORP",
-  "ABBV 3.2 11/06/2022 CORP",
-  "ABBV 4.25 11/21/2049 144A CORP"
+           appName = getOption("blpAppName", NULL)
 )
 
+### options ###
+field_names <- c("PX_BID", "PX_ASK", "BLOOMBERG_MID_G_SPREAD")
+start_date <- as.Date("2015-01-01")
+opt <- c("periodicitySelection"="MONTHLY")
 
+bonds = as.character(bonds_df$Bond_corrected)
 
-test <- bdh(securities = bonds,
-       fields = field_names,
-       start.date = start_date,
-       options=opt)
+DATA <- bdh(securities = bonds,
+            fields = field_names,
+            start.date = start_date,
+            options=opt
+)
 
-lookupSecurity('ABT <corp>')
+as.data.frame(unlist(DATA))
+
+list.save(DATA3, 'C:\\Data\\UCL\\bonds_DATA_3.yaml')
