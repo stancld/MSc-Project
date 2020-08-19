@@ -29,6 +29,4 @@ DATA <- bdh(securities = bonds,
             options=opt
 )
 
-as.data.frame(unlist(DATA))
-
 list.save(DATA, output_path)

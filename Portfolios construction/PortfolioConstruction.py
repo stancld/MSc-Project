@@ -1,3 +1,10 @@
+"""
+File: PorftolioConstruction.py
+Author: Daniel Stancl
+
+utf-8
+"""
+
 # import libraries
 import os
 from os import listdir
@@ -103,8 +110,8 @@ class PorfolioConstruction(object):
             [self.save_portfolio(portfolio, data.columns, pname, sentiment_base, creation_period, diff) for portfolio, pname in zip([LONGS, SHORTS], ['LONGS', 'SHORTS'])]
             [self.save_portfolio_returns(portfolio, data.columns, pname, sentiment_base, creation_period, diff) for portfolio, pname in zip([R_LONGS, R_SHORTS], ['LONGS', 'SHORTS'])]
         else:
-            [self.save_momentum_portfolio(portfolio, data.columns, pname) for portfolio, pnaem in zip([LONGS, SHORTS], ['LONGS', 'SHORTS'])]
-            [self.save_momentum_portfolio_returns(portfolio, data.columns, pname) for portfolio, pnaem in zip([LONGS, SHORTS], ['LONGS', 'SHORTS'])]
+            [self.save_momentum_portfolio(portfolio, data.columns, pname) for portfolio, pname in zip([LONGS, SHORTS], ['LONGS', 'SHORTS'])]
+            [self.save_momentum_portfolio_returns(portfolio, data.columns, pname) for portfolio, pname in zip([LONGS, SHORTS], ['LONGS', 'SHORTS'])]
 
     def load_datasets(self, data_path):
         self.files = [f for f in listdir(data_path) if isfile(join(data_path, f))]

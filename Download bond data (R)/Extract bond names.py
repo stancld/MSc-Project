@@ -26,6 +26,9 @@ def generate_string(symbol):
     string = f"{symbol} (.+?) (.+?)/(.+?)/(.+?)<corp>"
     return string
 
+if 'EURO' in data_path:
+    data['Symbol'] = data['Symbol'].apply(lambda x: x.split('.')[0])
+
 bond_indicator = [re.search(generate_string(symbol), bond)!=None for symbol, bond in zip(data.Symbol, data.Bond)]
 data_filtered = data[bond_indicator]
 

@@ -9,8 +9,9 @@ utf-8
 ###########################
 ### SET HYPERPARAMETERS ###
 ###########################
-bond_path = '/mnt/c/Data/UCL/companies_bonds_FTSE_list_1.csv'
-output_path = '/mnt/c/Data/UCL/@MSc Project - Data and sources/List of bonds/Bond_FTSE_dataset.csv'
+data_path = '/mnt/c/Data/UCL/bonds_EURO_DATA.yaml'
+bond_path = '/mnt/c/Data/UCL/companies_bonds_EURO_list_1.csv'
+output_path = '/mnt/c/Data/UCL/@MSc Project - Data and sources/List of bonds/Bond_EURO_dataset.csv'
 
 ###########################
 ###########################
@@ -30,13 +31,12 @@ import yaml
 ##############
 
 # open yaml - i.e. R output
-def open_yaml(path):
-    data_path = path
+def open_yaml(data_path):
     with open(data_path) as f:
         data = yaml.load(f, Loader=yaml.FullLoader)
     return data
 
-data=open_yaml(bond_path)
+data=open_yaml(data_path)
 
 # open data containing company|symbol|bond
 bonds_df = pd.read_csv(bond_path)

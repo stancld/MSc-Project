@@ -17,7 +17,8 @@
 - run 'Download bond data.R'
 - here, one must specify:
     1. bond_path: Output_path from STEP 2
-    2. output_path: Output file of this program used for creating dataset in STEP 4
+    2. bond_path: Output_path from STEP 1
+    3. output_path: Output file of this program used for creating dataset in STEP 4
 
 ## STEP 4 ##
 - run 'Create Bond dataset.py'
