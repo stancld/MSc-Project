@@ -1,3 +1,8 @@
+### SET HYPERARAMETER ###
+listedOn = 'EURO STOXX 50'
+output_path <- 'C:\\Data\\UCL\\companies_bonds_EURO_list.csv'
+#########################
+
 ## import libraries ###
 library(Rblpapi)
 library(tidyverse)
@@ -7,7 +12,6 @@ company_path <- "C:\\Data\\UCL\\companies_bonds.csv"
 companies <- read.csv(company_path, sep = ';')
 
 # filtr only s&p 500
-listedOn = 'S&P 500'
 companies <- companies[companies$ListedOn==listedOn,]
 companies_list <- as.character(companies$Company)
 symbol_list <- as.character(companies$Symbol)
@@ -42,4 +46,4 @@ DATA_symbol_unlist <- unlist(DATA_symbol, use.names=FALSE)
 
 df <- as.data.frame(cbind(DATA_unlist, DATA_company_unlist, DATA_symbol_unlist))
 
-write.csv(df, 'C:\\Data\\UCL\\companies_bonds_list.csv')
+write.csv(df, output_path)

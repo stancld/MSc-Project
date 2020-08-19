@@ -1,5 +1,5 @@
 """
-File: Opne_yaml.py
+File: Open_yaml.py
 Author: Daniel Stancl
 """
 

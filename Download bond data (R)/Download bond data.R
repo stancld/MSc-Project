@@ -1,11 +1,14 @@
+### SET HYPERARAMETER ###
+bond_path <- 'C:\\Data\\UCL\\companies_bonds_EURO_list_1.csv'
+output_path <- 'C:\\Data\\UCL\\bonds_EURO_DATA.yaml'
+#########################
+
 ## import libraries ###
 library(Rblpapi)
 library(rlist)
 
 ### set global variables and loda data###
-bond_path <- 'C:\\Data\\UCL\\companies_bonds_list_1.csv'
 bonds_df <- read.csv(bond_path)
-
 
 ### connection ###
 blpConnect(host = getOption("blpHost", "localhost"),
@@ -28,4 +31,4 @@ DATA <- bdh(securities = bonds,
 
 as.data.frame(unlist(DATA))
 
-list.save(DATA3, 'C:\\Data\\UCL\\bonds_DATA_3.yaml')
+list.save(DATA, output_path)

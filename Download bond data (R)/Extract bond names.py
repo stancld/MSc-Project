@@ -4,12 +4,19 @@ Author: Daniel Stancl
 
 utf-8
 """
+##########################
+### SET HYPERPARAMETER ###
+##########################
+data_path = "/mnt/c/Data/UCL/companies_bonds_EURO_list.csv"
+output_path = "/mnt/c/Data/UCL/companies_bonds_EURO_list_1.csv"
+##########################
+##########################
+
 # Import libraries
 import re
 import pandas as pd
 
 # load the data
-data_path = "/mnt/c/Data/UCL/companies_bonds_list.csv"
 data = pd.read_csv(data_path, index_col=0)
 data.columns = ['Bond', 'Company', 'Symbol']
 data.head()
@@ -39,5 +46,4 @@ def correct_decimals(bond):
 data_filtered['Bond_corrected'] = data_filtered['Bond'].apply(lambda x: correct_decimals(x))
 
 # save the data
-output_path = "/mnt/c/Data/UCL/companies_bonds_list_1.csv"
 data_filtered.to_csv(output_path, index=False)

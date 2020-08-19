@@ -3,7 +3,19 @@ File: CreatePools.py
 Author: Daniel Stancl
 
 Description: The script which creates a pool available to invest.
+
+utf-8
 """
+###########################
+### SET HYPERPARAMETERS ###
+###########################
+bond_path = '/mnt/c/Data/UCL/companies_bonds_FTSE_list_1.csv'
+output_path = '/mnt/c/Data/UCL/@MSc Project - Data and sources/List of bonds/Bond_FTSE_dataset.csv'
+
+###########################
+###########################
+
+# Import libraries
 import os
 from os import listdir
 from os.path import isfile, join
@@ -11,28 +23,23 @@ from os.path import isfile, join
 import re
 import numpy as np
 import pandas as pd
+import yaml
 
 ##############
-#### TEST ####
+#### MAIN ####
 ##############
 
 # open yaml - i.e. R output
-import yaml
-def open_yaml(i_list):
-    data = dict()
-    for i in i_list:
-        data_path = f"/mnt/c/Data/UCL/bonds_DATA_{i}.yaml"
-        with open(data_path) as f:
-            data[i] = yaml.load(f, Loader=yaml.FullLoader)
+def open_yaml(path):
+    data_path = path
+    with open(data_path) as f:
+        data = yaml.load(f, Loader=yaml.FullLoader)
     return data
 
-data=open_yaml([1,2,3])
-data_merged = {**data[1], **data[2], **data[3]}
+data=open_yaml(bond_path)
 
 # open data containing company|symbol|bond
-bond_path = '/mnt/c/Data/UCL/companies_bonds_list_1.csv'
 bonds_df = pd.read_csv(bond_path)
-
 
 def parse_bond_DATA(data, bonds_df, bonds_name):
     DATA = []
@@ -67,7 +74,7 @@ def parse_bond_DATA(data, bonds_df, bonds_name):
             DATA.append(DATA_element)
     return pd.DataFrame(DATA)
 
-DF = parse_bond_DATA(data_merged, bonds_df, 'Bond_corrected')
+DF = parse_bond_DATA(data, bonds_df, 'Bond_corrected')
 DF['Date'] = DF['Date'].apply(lambda x: int(x))
 
 ## correct dates ##
@@ -93,7 +100,7 @@ DF = DF[DF.TTM >= 0]
 
 ## save ##
 DF.to_csv(
-    '/mnt/c/Data/UCL/@MSc Project - Data and sources/List of bonds/Bond_dataset.csv',
+    output_path,
     index=False
 )
 
