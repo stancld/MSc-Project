@@ -38,7 +38,9 @@ class PorfolioConstruction(object):
             index: list(all_companies[all_companies.ListedOn == index].Company) for index in self.stock_market_indices
         }
         self.decile_size = {
-            index: 30 for index in self.stock_market_indices
+            'S&P 500': 30,
+            'FTSE 100': 1,
+            'EURO STOXX 50': 1
         }
 
         self.bond_dataset = pd.read_csv(bond_dataset_path)
@@ -111,7 +113,7 @@ class PorfolioConstruction(object):
             [self.save_portfolio_returns(portfolio, data.columns, pname, sentiment_base, creation_period, diff) for portfolio, pname in zip([R_LONGS, R_SHORTS], ['LONGS', 'SHORTS'])]
         else:
             [self.save_momentum_portfolio(portfolio, data.columns, pname) for portfolio, pname in zip([LONGS, SHORTS], ['LONGS', 'SHORTS'])]
-            [self.save_momentum_portfolio_returns(portfolio, data.columns, pname) for portfolio, pname in zip([LONGS, SHORTS], ['LONGS', 'SHORTS'])]
+            [self.save_momentum_portfolio_returns(portfolio, data.columns, pname) for portfolio, pname in zip([R_LONGS, R_SHORTS], ['LONGS', 'SHORTS'])]
 
     def load_datasets(self, data_path):
         self.files = [f for f in listdir(data_path) if isfile(join(data_path, f))]
@@ -271,7 +273,7 @@ class PorfolioConstruction(object):
 ## TEST ##
 ##########
 company_path = '/mnt/c/Data/UCL/@MSc Project - Data and sources/Sentiment results/companies_filtered.csv'
-bond_dataset_path = '/mnt/c/Data/UCL/@MSc Project - Data and sources/List of bonds/Bond_dataset.csv'
+bond_dataset_path = '/mnt/c/Data/UCL/@MSc Project - Data and sources/List of bonds/Bond_EURO_dataset.csv'
 source_data_path = '/mnt/c/Data/UCL/@MSc Project - Data and sources/Sentiment results/'
 output_path = '/mnt/c/Data/UCL/@MSc Project - Data and sources/Sentiment results/Portfolios/'
 
@@ -284,9 +286,11 @@ kwargs = {
 }
 
 
-a=PorfolioConstruction(company_path, bond_dataset_path)
+a=PorfolioConstruction(company_path, bond_dataset_path, 'EURO STOXX 50')
 # run sentiment portfolio
-#a.run(source_data_path, output_path, False, **kwargs)
+a.run(source_data_path, output_path, False, **kwargs)
 # run momentu portfolio
 a.run(source_data_path, output_path, True, **kwargs)
+
+
 
