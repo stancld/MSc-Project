@@ -1,3 +1,10 @@
+"""
+File: Return_bonds.py
+Author: Daniel Stancl
+
+utf-8
+"""
+# import libraries
 import os
 from os import listdir
 from os.path import isfile, join
@@ -11,11 +18,10 @@ import pandas as pd
 
 
 ## data loader
-def load_data(sentiment_base, main_path='/mnt/c/Data/UCL/@MSc Project - Data and sources/Sentiment results/Portfolios'):
+def load_data(main_path, sentiment_base):
     """
-    :param sentiment base: choose from 'review' or 'rating'
+    :param sentiment base: choose from 'review' or 'rating' or None
     :param main_path: path to the directory containing results
-        default: '/mnt/c/Data/UCL/@MSc Project - Data and sources/Sentiment results/Porfolios'
 
     :return datasets: dict of load datasets
     """
@@ -38,8 +44,23 @@ def concatenate_longs_and_shorts(datasets):
     """
     :param datasets: datasets obtained from load_data function
 
-    :return datasets: datasets where LONG and SHORT portfolio returns are concatenated
+    :return datasets_concatenated: datasets where LONG and SHORT portfolio returns are concatenated
     """
+    data_keys = {
+        strategy: [key for key in datasets.keys() if strategy in key] for strategy in ['LONGS', 'SHORTS'] 
+    }
+    [data_keys[strategy].sort() for strategy in data_keys.keys()]
+
+    datasets_concatenated = {
+        generate_key(long_key): datasets[long_key].append(datasets[short_key]) for (long_key, short_key) in zip(data_keys['LONGS'], data_keys['SHORTS'])
+    }
+    return datasets_concatenated    
+
+def generate_key(long_key):
+    """
+    :param long_key: long_key of dictionary
+    """
+    return '_'.join([x for x in long_key.split('_') if x != 'LONGS'])
 
 def compute_returns(data, key):
     """
@@ -47,27 +68,15 @@ def compute_returns(data, key):
     :param key: key of a dictionary detemining names for output dictiony
 
     :return returns_dict: dictionary of dictionaries containing:
+        - year return
         - mean return
         - standard dev.
         - t-statistics
     """
     month_returns = data.mean(axis=0)
     return {
+        'year_return': np.round(100*((1+month_returns.mean())**12 - 1), 4),
         'mean': np.round(100*month_returns.mean(), 4),
         'std': np.round(100*month_returns.std(), 4),
-        't-value': month_returns.mean() / month_returns.std()
+        't-value': np.abs(month_returns.mean() / (month_returns.std() / np.sqrt(month_returns.shape[0])))
     }
-
-
-
-###########
-### RUN ###
-###########
-
-datasets = load_data('rating')
-returns = {
-    key: compute_returns(data, key) for (key, data) in datasets.items() 
-}
-
-for data in returns.keys():
-    print(data+':', returns[data])
