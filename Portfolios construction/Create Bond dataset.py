@@ -9,9 +9,9 @@ utf-8
 ###########################
 ### SET HYPERPARAMETERS ###
 ###########################
-data_path = '/mnt/c/Data/UCL/bonds_EURO_DATA.yaml'
-bond_path = '/mnt/c/Data/UCL/companies_bonds_EURO_list_1.csv'
-output_path = '/mnt/c/Data/UCL/@MSc Project - Data and sources/List of bonds/Bond_EURO_dataset.csv'
+data_path = '/mnt/c/Data/UCL/bonds_DATA.yaml'
+bond_path = '/mnt/c/Data/UCL/companies_bonds_list_1.csv'
+output_path = '/mnt/c/Data/UCL/@MSc Project - Data and sources/List of bonds/Bond_dataset_new.csv'
 
 ###########################
 ###########################
@@ -38,6 +38,16 @@ def open_yaml(data_path):
 
 data=open_yaml(data_path)
 
+"""
+DATA = {}
+for i in range(1, 4):
+    data_path = f'/mnt/c/Data/UCL/bonds_DATA_{i}.yaml'
+    DATA[i] = open_yaml(data_path)
+DATA_new = {**DATA[1], **DATA[2], **DATA[3]}
+with open('/mnt/c/Data/UCL/bonds_DATA.yaml', 'w') as outfile:
+    yaml.dump(DATA_new, outfile, default_flow_style=False)
+"""
+
 # open data containing company|symbol|bond
 bonds_df = pd.read_csv(bond_path)
 
@@ -52,6 +62,7 @@ def parse_bond_DATA(data, bonds_df, bonds_name):
             for j in range(len(element['date'])):
                 DATA_element = {
                     'Bond': bond,
+                    'Month_Interest_rate': np.round(100 * ( (1 + float(bond.split()[1])/100)**(1/12) - 1), 3),
                     'Company': bonds_df.loc[i, 'Company'],
                     'Symbol': bonds_df.loc[i, 'Symbol'],
                     'Date': element['date'][j],
@@ -64,6 +75,7 @@ def parse_bond_DATA(data, bonds_df, bonds_name):
         else:
             DATA_element = {
                 'Bond': bond,
+                'Month_Interest_rate': np.round(100 * ( (1 + float(bond.split()[1])/100)**(1/12) - 1), 3),
                 'Company': bonds_df.loc[i, 'Company'],
                 'Symbol': bonds_df.loc[i, 'Symbol'],
                 'Date': element['date'],
@@ -103,4 +115,3 @@ DF.to_csv(
     output_path,
     index=False
 )
-

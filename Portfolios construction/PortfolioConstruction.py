@@ -15,7 +15,7 @@ import pandas as pd
 
 
 # PortfolioConstruction class
-class PorfolioConstruction(object):
+class PortfolioConstruction(object):
     """
     The purpose of this class is to create decile long-short portfolios
     for individual months and for individual stock market indices.
@@ -26,7 +26,7 @@ class PorfolioConstruction(object):
     At this moment, 
     """
 
-    def __init__(self, company_path, bond_dataset, market_index='S&P 500'):
+    def __init__(self, company_path, bond_dataset_path, market_index='S&P 500'):
         self.stock_market_indices = ['S&P 500', 'FTSE 100', 'EURO STOXX 50']
         if market_index not in self.stock_market_indices:
             raise ValueError("Inappropriate arg value!")
@@ -166,8 +166,9 @@ class PorfolioConstruction(object):
             try:
                 buy_price = float(specific_bond[specific_bond.Date.apply(lambda x: x.month)==month]['Ask_price'])
                 end_price = float(specific_bond[specific_bond.Date.apply(lambda x: x.month)==month_t]['Ask_price'])
+                interest = float(specific_bond[specific_bond.Date.apply(lambda x: x.month)==month]['Month_Interest_rate'])
                 return np.round(
-                    (end_price - buy_price) / end_price, 4
+                    (100*end_price/buy_price + interest - 100) / 100, 4 # we consider 100 to be fixed investment to easily calculate interest
                 )
             except:
                 return 0
@@ -177,7 +178,7 @@ class PorfolioConstruction(object):
                 sell_price = float(specific_bond[specific_bond.Date.apply(lambda x: x.month)==month]['Bid_price'])
                 end_price = float(specific_bond[specific_bond.Date.apply(lambda x: x.month)==month_t]['Bid_price'])
                 return np.round(
-                    (sell_price - end_price) / sell_price, 4
+                    (100 - 100*end_price/sell_price) / 100, 4 # we consider 100 to be fixed investment to easily calculate interest
                 )
             except:
                 return 0
@@ -220,14 +221,14 @@ class PorfolioConstruction(object):
         # 2. Extract considered companies from bond dataset
         actual_bonds = (
             self.bond_dataset[(self.bond_dataset.Date.apply(lambda x: x.year)==year) & (self.bond_dataset.Date.apply(lambda x: x.month)==month)]
-        )[['Bond', 'Date', 'Ask_price', 'Bid_price']]
+        )[['Bond', 'Month_Interest_rate','Date', 'Ask_price', 'Bid_price']]
         actual_bonds['Price'] = (actual_bonds['Ask_price'] + actual_bonds['Bid_price']) / 2
 
         # 3. Filter corresponding bonds and their records 3 months back
         actual_bonds_3M = self.bond_dataset[self.bond_dataset.Bond.isin(actual_bonds.Bond)]
         actual_bonds_3M = (
             actual_bonds_3M[(actual_bonds_3M.Date.apply(lambda x: x.year)==year_t) & (actual_bonds_3M.Date.apply(lambda x: x.month)==month_t)]
-        )[['Bond', 'Date', 'Ask_price', 'Bid_price']]
+        )[['Bond', 'Month_Interest_rate', 'Date', 'Ask_price', 'Bid_price']]
         actual_bonds_3M.rename(columns={
             'Ask_price': 'Ask_price_t',
             'Bid_price': 'Bid_price_t'
@@ -235,8 +236,8 @@ class PorfolioConstruction(object):
         actual_bonds_3M['Price_t'] = (actual_bonds_3M['Ask_price_t'] + actual_bonds_3M['Bid_price_t']) / 2
 
         # 4. Calculate returns
-        ## Drop date not to cramp join
-        actual_bonds.drop('Date', axis=1, inplace=True), actual_bonds_3M.drop('Date', axis=1, inplace=True)
+        ## Drop date & months_interest rate not to cramp join
+        actual_bonds.drop(['Date', 'Month_Interest_rate'], axis=1, inplace=True), actual_bonds_3M.drop('Date', axis=1, inplace=True)
         
         bonds_join = (
             actual_bonds.set_index('Bond')
@@ -267,30 +268,5 @@ class PorfolioConstruction(object):
         self.use_shortterm = (True if kwargs['short_term']==True else False)
         self.use_longterm = (True if kwargs['long_term']==True else False)
         self.use_diff = (True if kwargs['diff']==True else False)
-
-
-##########
-## TEST ##
-##########
-company_path = '/mnt/c/Data/UCL/@MSc Project - Data and sources/Sentiment results/companies_filtered.csv'
-bond_dataset_path = '/mnt/c/Data/UCL/@MSc Project - Data and sources/List of bonds/Bond_EURO_dataset.csv'
-source_data_path = '/mnt/c/Data/UCL/@MSc Project - Data and sources/Sentiment results/'
-output_path = '/mnt/c/Data/UCL/@MSc Project - Data and sources/Sentiment results/Portfolios/'
-
-kwargs = {
-    'ratings': True,
-    'reviews': True,
-    'short_term': True,
-    'long_term': True,
-    'diff': True  
-}
-
-
-a=PorfolioConstruction(company_path, bond_dataset_path, 'EURO STOXX 50')
-# run sentiment portfolio
-a.run(source_data_path, output_path, False, **kwargs)
-# run momentu portfolio
-a.run(source_data_path, output_path, True, **kwargs)
-
 
 

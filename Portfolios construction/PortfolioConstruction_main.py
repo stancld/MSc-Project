@@ -8,9 +8,9 @@ utf-8
 ### SET HYPERPARAMETERS ###
 ###########################
 company_path = '/mnt/c/Data/UCL/@MSc Project - Data and sources/Sentiment results/companies_filtered.csv'
-bond_dataset_path = '/mnt/c/Data/UCL/@MSc Project - Data and sources/List of bonds/Bond_dataset.csv'
+bond_dataset_path = '/mnt/c/Data/UCL/@MSc Project - Data and sources/List of bonds/Bond_dataset_new.csv'
 source_data_path = '/mnt/c/Data/UCL/@MSc Project - Data and sources/Sentiment results/'
-output_path = '/mnt/c/Data/UCL/@MSc Project - Data and sources/Sentiment results/Portfolios/'
+output_path = '/mnt/c/Data/UCL/@MSc Project - Data and sources/Sentiment results/Portfolios/New'
 
 kwargs = {
     'ratings': True,
@@ -35,8 +35,8 @@ from PortfolioConstruction import PortfolioConstruction
 ############
 ### MAIN ###
 ############
-a=PorfolioConstruction(company_path, bond_dataset_path)
+constructor = PortfolioConstruction(company_path, bond_dataset_path, 'S&P 500')
 # run sentiment portfolio
-a.run(source_data_path, output_path, False, **kwargs)
+constructor.run(source_data_path, output_path, False, **kwargs)
 # run momentu portfolio
-a.run(source_data_path, output_path, True, **kwargs)
+constructor.run(source_data_path, output_path, True, **kwargs)
