@@ -13,7 +13,7 @@ from os.path import isfile, join
 import numpy as np
 import pandas as pd
 
-from Return_bonds import load_data, concatenate_longs_and_shorts, generate_key, compute_returns
+from Returns_bonds import load_data, concatenate_longs_and_shorts, generate_key, compute_returns
 
 ## load argument
 parser = ArgumentParser()
@@ -46,8 +46,8 @@ def main():
     # save results
     if args.sentiment_base == None:
         args.sentiment_base='momentum'
-    pd.DataFrame(returns).T.to_excel(join(args.main_path, f'results_{args.sentiment_base}.xlsx'))
-    pd.DataFrame(returns_concatenated).T.to_excel(join(args.main_path, f'results_concat_{args.sentiment_base}.xlsx'))
+    pd.DataFrame(returns).to_excel(join(args.main_path, f'results_{args.sentiment_base}.xlsx'))
+    pd.DataFrame(returns_concatenated).to_excel(join(args.main_path, f'results_concat_{args.sentiment_base}.xlsx'))
 
 if __name__=='__main__':
     main()

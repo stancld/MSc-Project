@@ -68,15 +68,19 @@ def compute_returns(data, key):
     :param key: key of a dictionary detemining names for output dictiony
 
     :return returns_dict: dictionary of dictionaries containing:
-        - year return
+        - annualized return
         - mean return
         - standard dev.
-        - t-statistics
+        - t-statistics (absolute value)
     """
     month_returns = data.mean(axis=0)
     return {
-        'year_return': np.round(100*((1+month_returns.mean())**12 - 1), 4),
-        'mean': np.round(100*month_returns.mean(), 4),
-        'std': np.round(100*month_returns.std(), 4),
-        't-value': np.abs(month_returns.mean() / (month_returns.std() / np.sqrt(month_returns.shape[0])))
+        'Mean return': np.round(100*month_returns.mean(), 4),
+        'St. dev.': np.round(100*month_returns.std(), 4),
+        '|t|': np.round(
+            np.abs(
+                month_returns.mean() / (month_returns.std() / np.sqrt(month_returns.shape[0]))
+            ), 2
+        ),
+        'Annualized return': np.round(100*((1+month_returns.mean())**12 - 1), 4),
     }
