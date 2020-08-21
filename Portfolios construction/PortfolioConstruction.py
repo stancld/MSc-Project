@@ -47,7 +47,7 @@ class PortfolioConstruction(object):
         # enforce date type
         self.bond_dataset['Date'] = pd.to_datetime(self.bond_dataset['Date'])
 
-    def run(self, source_data_path, output_path, momentum, **kwargs):
+    def run(self, source_data_path, output_path, momentum, low_risk, **kwargs):
         self._save_kwargs(kwargs)
         self.output_path = output_path
         datasets = self.load_datasets(source_data_path)
@@ -55,6 +55,8 @@ class PortfolioConstruction(object):
         self.experiment=0
         if momentum:
             self.create_portfolios(momentum=True)
+        elif low_risk:
+            self.create_portfolios(low_risk=True)
         else:
             if self.use_ratings and self.use_shortterm:
                 self.create_portfolios('Rating', '1M')
@@ -66,7 +68,7 @@ class PortfolioConstruction(object):
                 self.create_portfolios('Rating', '3M', use_diff=True)
 
     
-    def create_portfolios(self, sentiment_base='', creation_period='', use_diff=False, momentum=False):
+    def create_portfolios(self, sentiment_base='', creation_period='', use_diff=False, momentum=False, low_risk=False):
         self.experiment+=1
         if not momentum:
             try:
@@ -79,7 +81,7 @@ class PortfolioConstruction(object):
                 data = self.datasets[data_name]
             except:
                 raise FileNotFoundError(f'{data_name} does not exist.')
-        elif momentum:
+        else:
             try:
                 # just pass auxiliry dataset to have date data
                 sentiment_base, creation_period = 'Rating', '1M'
@@ -95,10 +97,13 @@ class PortfolioConstruction(object):
         LONGS, SHORTS = [],[]
         R_LONGS, R_SHORTS = [], []
         for date in data.columns:
-            if not momentum:
-                bonds_picked = self._create_single_portfolio(data, date)
-            elif momentum:
+            if momentum:
                 bonds_picked = self._create_single_momentum_portfolio(date)
+            elif low_risk:
+                bonds_picked = self._create_single_lowrisk_portfolio(date)
+            else:
+                bonds_picked = self._create_single_portfolio(data, date)
+                
             LONGS.append(bonds_picked['long'])
             SHORTS.append(bonds_picked['short'])
             
@@ -108,12 +113,17 @@ class PortfolioConstruction(object):
             print(f"Experiment no.{self.experiment} - Returns for {date} calculated.")
         
         # save created porfolios and returns for any future use
-        if not momentum:
-            [self.save_portfolio(portfolio, data.columns, pname, sentiment_base, creation_period, diff) for portfolio, pname in zip([LONGS, SHORTS], ['LONGS', 'SHORTS'])]
-            [self.save_portfolio_returns(portfolio, data.columns, pname, sentiment_base, creation_period, diff) for portfolio, pname in zip([R_LONGS, R_SHORTS], ['LONGS', 'SHORTS'])]
+        if momentum or low_risk:
+            if momentum:
+                base = 'momentum'
+            else:
+                base = 'low_risk'
+            [self.save_other_portfolio(portfolio, data.columns, pname, base) for portfolio, pname in zip([LONGS, SHORTS], ['LONGS', 'SHORTS'])]
+            [self.save_other_portfolio_returns(portfolio, data.columns, pname, base) for portfolio, pname in zip([R_LONGS, R_SHORTS], ['LONGS', 'SHORTS'])]
         else:
-            [self.save_momentum_portfolio(portfolio, data.columns, pname) for portfolio, pname in zip([LONGS, SHORTS], ['LONGS', 'SHORTS'])]
-            [self.save_momentum_portfolio_returns(portfolio, data.columns, pname) for portfolio, pname in zip([R_LONGS, R_SHORTS], ['LONGS', 'SHORTS'])]
+            [self.save_portfolio(portfolio, data.columns, pname, sentiment_base, creation_period, diff) for portfolio, pname in zip([LONGS, SHORTS], ['LONGS', 'SHORTS'])]
+            [self.save_portfolio_returns(portfolio, data.columns, pname, sentiment_base, creation_period, diff) for portfolio, pname in zip([R_LONGS, R_SHORTS], ['LONGS', 'SHORTS'])]   
+            
 
     def load_datasets(self, data_path):
         self.files = [f for f in listdir(data_path) if isfile(join(data_path, f))]
@@ -127,10 +137,10 @@ class PortfolioConstruction(object):
         fpath = join(self.output_path, fname)
         portfolio_df.to_csv(fpath)
     
-    def save_momentum_portfolio(self, portfolio, columns, portfolio_name):
+    def save_other_portfolio(self, portfolio, columns, portfolio_name, base):
         portfolio_df = pd.DataFrame(portfolio).T
         portfolio_df.columns = columns
-        fname = f"{portfolio_name}_{self.market_index}_Momentum.csv"
+        fname = f"{portfolio_name}_{self.market_index}_{base}.csv"
         fpath = join(self.output_path, fname)
         portfolio_df.to_csv(fpath)
     
@@ -168,7 +178,7 @@ class PortfolioConstruction(object):
                 end_price = float(specific_bond[specific_bond.Date.apply(lambda x: x.month)==month_t]['Ask_price'])
                 interest = float(specific_bond[specific_bond.Date.apply(lambda x: x.month)==month]['Month_Interest_rate'])
                 return np.round(
-                    (100*end_price/buy_price + interest - 100) / 100, 4 # we consider 100 to be fixed investment to easily calculate interest
+                    (100*end_price/buy_price - 100 + interest) / 100, 4 # we consider 100 to be fixed investment to easily calculate interest
                 )
             except:
                 return 0
@@ -177,6 +187,7 @@ class PortfolioConstruction(object):
             try:
                 sell_price = float(specific_bond[specific_bond.Date.apply(lambda x: x.month)==month]['Bid_price'])
                 end_price = float(specific_bond[specific_bond.Date.apply(lambda x: x.month)==month_t]['Bid_price'])
+                interest = float(specific_bond[specific_bond.Date.apply(lambda x: x.month)==month]['Month_Interest_rate'])
                 return np.round(
                     (100 - 100*end_price/sell_price) / 100, 4 # we consider 100 to be fixed investment to easily calculate interest
                 )
@@ -206,6 +217,25 @@ class PortfolioConstruction(object):
         BONDS_picked = {}
         for long_short, companies in zip(['long', 'short'], [long_companies, short_companies]):
             BONDS_picked[long_short] = [self._pick_bond(actual_bonds, company, long_short) for company in companies]
+        return BONDS_picked
+
+    def _create_single_lowrisk_portfolio(self, date):
+        # 1. extract year and month
+        year, month = [int(x) for x in date.split('-')][:2]
+
+        # 2. Extract considered companies from bond dataset
+        actual_bonds = (
+            self.bond_dataset[(self.bond_dataset.Date.apply(lambda x: x.year)==year) & (self.bond_dataset.Date.apply(lambda x: x.month)==month)]
+        )
+        # 3. Select bonds
+        actual_bonds = (
+            actual_bonds[actual_bonds.TTM > 1/12] # just to safely filter those bonds maturing that month
+            .sort_values('TTM')
+        )
+        BONDS_picked = {
+            'long': list(actual_bonds.loc[:self.decile_size[self.market_index], 'Bond']),
+            'short': list(actual_bonds.loc[-self.decile_size[self.market_index]:, 'Bond'])
+        }
         return BONDS_picked
     
     def _create_single_momentum_portfolio(self, date):
@@ -244,7 +274,7 @@ class PortfolioConstruction(object):
             .join(actual_bonds_3M.set_index('Bond'), on='Bond')
         )
         returns = (
-            (bonds_join['Price'] - bonds_join['Price_t']) / bonds_join['Price_t']
+            (bonds_join['Price'] - bonds_join['Price_t']) / bonds_join['Price_t'] + bonds_join['Month_Interest_rate']
         ).dropna().sort_values(ascending=False)
 
         # 5. Select companies to long and short

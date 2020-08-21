@@ -37,6 +37,10 @@ from PortfolioConstruction import PortfolioConstruction
 ############
 constructor = PortfolioConstruction(company_path, bond_dataset_path, 'S&P 500')
 # run sentiment portfolio
-constructor.run(source_data_path, output_path, False, **kwargs)
-# run momentu portfolio
-constructor.run(source_data_path, output_path, True, **kwargs)
+###constructor.run(source_data_path, output_path, False, False, **kwargs)
+
+# run momentum portfolio
+constructor.run(source_data_path, output_path, True, False, **kwargs)
+
+# run low-risk portfolio
+##constructor.run(source_data_path, output_path, False, True, **kwargs)

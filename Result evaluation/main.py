@@ -20,7 +20,7 @@ parser = ArgumentParser()
 
 parser.add_argument(
     '--main_path', help='path to the directory containing results',
-    default='/mnt/c/Data/UCL/@MSc Project - Data and sources/Sentiment results/Portfolios'
+    default='/mnt/c/Data/UCL/@MSc Project - Data and sources/Sentiment results/Portfolios/New'
 )
 
 parser.add_argument(

@@ -38,7 +38,25 @@ def load_data(main_path, sentiment_base):
     else:
         files_selected = [f for f in files if ('Momentum' in f) and ('RETURNS' in f)]
     datasets = {f: pd.read_csv(join(main_path, f), index_col=0) for f in files_selected}
-    return datasets
+    datasets_n = cut_data(datasets, sentiment_base)
+    return datasets_n
+
+def cut_data(datasets, sentiment_base):
+    """
+    Function which cut data so that all of them have the same dimensions
+
+    :param dataset: dict of datasets obtained from load_data function
+
+    :return cut_dataset: cut datasets with respect to the one with the fewest periods
+    """
+    min_dim = min(
+        [dataset.shape[1] for dataset in datasets.values()]
+    )
+    if sentiment_base==None: # just to ensure we have same number of periods (not nice but needed)
+        min_dim-=3
+    
+    return {key: dataset.iloc[:, -min_dim:] for (key, dataset) in datasets.items()}
+
 
 def concatenate_longs_and_shorts(datasets):
     """
@@ -83,4 +101,5 @@ def compute_returns(data, key):
             ), 2
         ),
         'Annualized return': np.round(100*((1+month_returns.mean())**12 - 1), 4),
+        'T': data.shape[1]
     }
