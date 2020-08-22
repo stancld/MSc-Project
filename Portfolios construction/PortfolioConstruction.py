@@ -70,7 +70,16 @@ class PortfolioConstruction(object):
     
     def create_portfolios(self, sentiment_base='', creation_period='', use_diff=False, momentum=False, low_risk=False):
         self.experiment+=1
-        if not momentum:
+        if momentum or low_risk:
+            try:
+                # just pass auxiliry dataset to have date data
+                sentiment_base, creation_period = 'Rating', '1M'
+                data_name = [name for name in self.files if (sentiment_base in name) and (creation_period in name) and ('Diff' not in name)][0]
+                data = self.datasets[data_name]
+            except:
+                raise FileNotFoundError(f'{data_name} does not exist.')
+        
+        else:
             try:
                 if use_diff==False:
                     data_name = [name for name in self.files if (sentiment_base in name) and (creation_period in name) and ('Diff' not in name)][0]
@@ -78,14 +87,6 @@ class PortfolioConstruction(object):
                 else:
                     data_name = [name for name in self.files if (sentiment_base in name) and (creation_period in name) and ('Diff' in name)][0]
                     diff='_Diff'
-                data = self.datasets[data_name]
-            except:
-                raise FileNotFoundError(f'{data_name} does not exist.')
-        else:
-            try:
-                # just pass auxiliry dataset to have date data
-                sentiment_base, creation_period = 'Rating', '1M'
-                data_name = [name for name in self.files if (sentiment_base in name) and (creation_period in name) and ('Diff' not in name)][0]
                 data = self.datasets[data_name]
             except:
                 raise FileNotFoundError(f'{data_name} does not exist.')
@@ -106,7 +107,9 @@ class PortfolioConstruction(object):
                 
             LONGS.append(bonds_picked['long'])
             SHORTS.append(bonds_picked['short'])
-            
+            print(
+                len(bonds_picked['long']), len(bonds_picked['short'])
+            )
             # FINALLY - calculate return!! exciting again
             R_LONGS.append([self._calculate_return_on_bond(bond, 'long', date) for bond in bonds_picked['long']])
             R_SHORTS.append([self._calculate_return_on_bond(bond, 'short', date) for bond in bonds_picked['short']])
@@ -151,10 +154,10 @@ class PortfolioConstruction(object):
         fpath = join(self.output_path, fname)
         portfolio_df.to_csv(fpath)
 
-    def save_momentum_portfolio_returns(self, portfolio, columns, portfolio_name):
+    def save_other_portfolio_returns(self, portfolio, columns, portfolio_name, base):
         portfolio_df = pd.DataFrame(portfolio).T
         portfolio_df.columns = columns
-        fname = f"RETURNS_{portfolio_name}_{self.market_index}_Momentum.csv"
+        fname = f"RETURNS_{portfolio_name}_{self.market_index}_{base}.csv"
         fpath = join(self.output_path, fname)
         portfolio_df.to_csv(fpath)
 
@@ -166,12 +169,14 @@ class PortfolioConstruction(object):
         else:
             year_t = year + 1
             month_t=1
+        
         # choose specific bond
         condition_1 = (self.bond_dataset.Date.apply(lambda x: x.year)==year) & (self.bond_dataset.Date.apply(lambda x: x.month)==month)
         condition_2 = (self.bond_dataset.Date.apply(lambda x: x.year)==year_t) & (self.bond_dataset.Date.apply(lambda x: x.month)==month_t)
         specific_bond = (
             self.bond_dataset[(condition_1 | condition_2) & (self.bond_dataset.Bond==bond)]
         )
+
         if long_short == 'long':
             try:
                 buy_price = float(specific_bond[specific_bond.Date.apply(lambda x: x.month)==month]['Ask_price'])
@@ -227,14 +232,16 @@ class PortfolioConstruction(object):
         actual_bonds = (
             self.bond_dataset[(self.bond_dataset.Date.apply(lambda x: x.year)==year) & (self.bond_dataset.Date.apply(lambda x: x.month)==month)]
         )
+
         # 3. Select bonds
         actual_bonds = (
             actual_bonds[actual_bonds.TTM > 1/12] # just to safely filter those bonds maturing that month
             .sort_values('TTM')
-        )
+        ).reset_index()
+
         BONDS_picked = {
-            'long': list(actual_bonds.loc[:self.decile_size[self.market_index], 'Bond']),
-            'short': list(actual_bonds.loc[-self.decile_size[self.market_index]:, 'Bond'])
+            'long': list(actual_bonds['Bond'][:self.decile_size[self.market_index]]),
+            'short': list(actual_bonds['Bond'][-self.decile_size[self.market_index]:])
         }
         return BONDS_picked
     

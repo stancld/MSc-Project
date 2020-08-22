@@ -40,7 +40,7 @@ constructor = PortfolioConstruction(company_path, bond_dataset_path, 'S&P 500')
 ###constructor.run(source_data_path, output_path, False, False, **kwargs)
 
 # run momentum portfolio
-constructor.run(source_data_path, output_path, True, False, **kwargs)
+#constructor.run(source_data_path, output_path, True, False, **kwargs)
 
 # run low-risk portfolio
-##constructor.run(source_data_path, output_path, False, True, **kwargs)
+constructor.run(source_data_path, output_path, False, True, **kwargs)
