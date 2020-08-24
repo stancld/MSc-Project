@@ -1,4 +1,15 @@
+"""
+File: Preprocess_Data.py
+Author: Daniel Stancl
+
+File description: Class for transforming raw reviews for BERT-edible input.
+
+utf-8
+"""
+
+
 # import libraries and settings
+import numpy as np
 import pandas as pd
 import torch
 import transformers
@@ -11,11 +22,14 @@ class PrepareData(object):
         """
         """
         self.valid_columns = [
+            ['Pros', 'Cons', 'Rating'],
             ['positives', 'negatives', 'overall'],
             ['positives', 'negatives', 'sentiment'],
             ['positives', 'negatives', 'rating'],
             ['review', 'sentiment'],
-            ['review', 'rating']
+            ['review', 'rating'],
+            ['Pros', 'Cons'],
+            ['positives', 'negatives'] 
         ]
 
         self.tokenizer = BertTokenizer.from_pretrained(pretrained_model_name)
@@ -23,9 +37,9 @@ class PrepareData(object):
             'input_ids', 'token_type_ids', 'attention_mask', 'sentiment'
         ]
 
-        self.len_limit = 300
+        self.len_limit = 80
 
-    def run(self, data_path, columns, torch_path, balanced):
+    def run(self, data_path, columns, torch_path, balanced=False, train_set=False):
         # sanity checks
         if not isinstance(columns, list):
             raise TypeError('columns must be a list')
@@ -39,22 +53,26 @@ class PrepareData(object):
             self.data = pd.read_csv(data_path)
         elif file_format in ['xls', 'xlsx']:
             self.data = pd.read_excel(data_path)
+        self.data.replace(np.nan, '', inplace=True)
 
         # select columns, make concatenation and transform rating to sentiment if desired
         self.data = self.data[columns]
         self._transform_input_columns(columns)
-        self._drop_tooLongReviews()
-        if balanced:
-            self._make_balanced_data()
+        if train_set is True:
+            self._drop_tooLongReviews()
+            if balanced:
+                self._make_balanced_data()
         self._transform_inputs()
         
         # save data as tensors to be simply loadable in PyTorch Lightning
         [self._convert_to_tensor_save(column, torch_path) for column in self.tokenizer_items]
     
     def _rating_to_sentiment(self, rating):
-        if rating <= 2:
+        if rating == '':
+            return torch.tensor((1,)) # return neutral if no rating provided  
+        elif int(rating) <= 2:
             return torch.tensor((0,))
-        elif rating == 3:
+        elif int(rating) == 3:
             return torch.tensor((1,))
         else:
             return torch.tensor((2,))
@@ -72,17 +90,16 @@ class PrepareData(object):
     )
 
     def _transform_input_columns(self, columns):
-        if 'positives' in columns:
-            self.data['review'] = self.data['positives'] + ' ' + self.data['negatives']
-        if 'rating' in columns:
-            self.data['sentiment'] = self.data['rating'].apply(lambda rating: self._rating_to_sentiment(rating))
-        elif  'overall' in columns:
-            self.data['sentiment'] = self.data['overall'].apply(lambda rating: self._rating_to_sentiment(rating))
-        else:
+        if 'review' not in columns:
+            self.data['review'] = "Pros: '" + self.data[columns[0]] + "'; Cons: '" + self.data[columns[1]] + "'"
+        if 'sentiment' in columns:
             self.data['sentiment'] = self.data['sentiment'].apply(lambda sentiment: torch.tensor((sentiment,)))
+        else: 
+            self.data['sentiment'] = self.data[columns[-1]].apply(lambda rating: self._rating_to_sentiment(rating))
+            
 
     def _drop_tooLongReviews(self):
-        self.data['ok'] = self.data['review'].apply(lambda x: len(x.split())) <= (1.2*self.len_limit)
+        self.data['ok'] = self.data['review'].apply(lambda x: len(x.split()) <= (1.5*self.len_limit))
         self.data = self.data[self.data.ok==True]
 
     def _make_balanced_data(self):

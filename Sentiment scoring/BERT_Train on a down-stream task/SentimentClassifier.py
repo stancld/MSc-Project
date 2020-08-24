@@ -1,3 +1,11 @@
+"""
+File: SentimentClassifier.py
+Author: Daniel Stancl
+
+File description: Class for BERT model using the HuggingFace's pretrained BERT module.
+"""
+
+
 # import libraries and settings
 from os import listdir
 from os.path import isfile, join
@@ -20,6 +28,9 @@ from transformers import BertModel, BertTokenizer, AdamW, get_linear_schedule_wi
 
 class BERT_SentimentClassifier(LightningModule):
     """
+    BERT classifier Glassdoor reviews.
+    Architecture:
+        BERT -> DropOut -> FC linear layer
     """
     def __init__(self, **kwargs):
         super(BERT_SentimentClassifier, self).__init__()   

@@ -18,30 +18,50 @@ import pandas as pd
 
 
 ## data loader
-def load_data(main_path, sentiment_base):
+def load_data(main_path, sentiment_base='', multi_factor = '', multi_factor_full = False):
     """
     :param sentiment base: choose from 'review' or 'rating' or None
     :param main_path: path to the directory containing results
+    :param multi_factor: a list of factors to be used to construct multi-factor portfolio;
+        must be specified as 'base_1 | base_2 | etc.'
 
     :return datasets: dict of load datasets
     """
-    if type(sentiment_base) not in [str, type(None)]:
-        raise TypeError('Param sentiment_base must be a type of str.')
-    if type(sentiment_base) != type(None):    
-        if sentiment_base.capitalize() not in ['Rating', 'Review']:
-            raise ValueError('Param sentiment_base must be either "rating" or "review" or None.')
+    if type(sentiment_base) is not str:
+        raise TypeError('Param sentiment_base must be of a type str.') 
+    if sentiment_base.capitalize() not in ['Rating', 'Review', 'Momentum', 'Low_risk', '']:
+        raise ValueError('Param sentiment_base must be either "rating" or "review" or "momentum" or "low_risk" or an empty string.')
+    if type(multi_factor) is not str:
+        raise TypeError('Param multi_factor must be of a type str.')
 
     # load data
     files = [f for f in listdir(main_path) if isfile(join(main_path, f))]
-    if type(sentiment_base) != type(None):
+    if sentiment_base == 'low_risk':
+        files_selected = [f for f in files if ('low_risk' in f) and ('RETURNS' in f)]
+    elif sentiment_base != '':
         files_selected = [f for f in files if (sentiment_base.capitalize() in f) and ('RETURNS' in f)]
     else:
-        files_selected = [f for f in files if ('Momentum' in f) and ('RETURNS' in f)]
+        if multi_factor == '':
+            raise ValueError('Either sentiment_base or multi_factor arg must be specified.')
+        files_selected = sum(
+            [[f for f in files if ('RETURNS_LONGS' in f) and (base.strip() in f)] for base in multi_factor.split('|')], []
+        )
+    
     datasets = {f: pd.read_csv(join(main_path, f), index_col=0) for f in files_selected}
-    datasets_n = cut_data(datasets, sentiment_base)
+    datasets_n = cut_data(datasets, sentiment_base, multi_factor)
+    if multi_factor != '': # join datasets
+        if not multi_factor_full:
+            div = len(multi_factor.split('|'))
+            shape = datasets_n[list(datasets_n.keys())[0]].shape[0]
+            N = int(shape/div)
+        else:
+            N = datasets_n[list(datasets_n.keys())[0]].shape[0]
+        datasets_n = {
+            'Multi_factor': pd.concat([data.iloc[:N,] for data in datasets_n.values()])
+        }
     return datasets_n
 
-def cut_data(datasets, sentiment_base):
+def cut_data(datasets, sentiment_base, multi_factor):
     """
     Function which cut data so that all of them have the same dimensions
 
@@ -52,11 +72,12 @@ def cut_data(datasets, sentiment_base):
     min_dim = min(
         [dataset.shape[1] for dataset in datasets.values()]
     )
-    if sentiment_base==None: # just to ensure we have same number of periods (not nice but needed)
+    if sentiment_base in ['Momentum', 'low_risk']: # just to ensure we have same number of periods (not nice but needed)
+        min_dim-=3
+    elif '3M_Diff' not in multi_factor:
         min_dim-=3
     
     return {key: dataset.iloc[:, -min_dim:] for (key, dataset) in datasets.items()}
-
 
 def concatenate_longs_and_shorts(datasets):
     """

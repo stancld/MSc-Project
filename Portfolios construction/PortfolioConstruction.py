@@ -107,9 +107,7 @@ class PortfolioConstruction(object):
                 
             LONGS.append(bonds_picked['long'])
             SHORTS.append(bonds_picked['short'])
-            print(
-                len(bonds_picked['long']), len(bonds_picked['short'])
-            )
+            
             # FINALLY - calculate return!! exciting again
             R_LONGS.append([self._calculate_return_on_bond(bond, 'long', date) for bond in bonds_picked['long']])
             R_SHORTS.append([self._calculate_return_on_bond(bond, 'short', date) for bond in bonds_picked['short']])
