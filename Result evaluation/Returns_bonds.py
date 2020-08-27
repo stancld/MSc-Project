@@ -29,7 +29,7 @@ def load_data(main_path, sentiment_base='', multi_factor = '', multi_factor_full
     """
     if type(sentiment_base) is not str:
         raise TypeError('Param sentiment_base must be of a type str.') 
-    if sentiment_base.capitalize() not in ['Rating', 'Review', 'Momentum', 'Low_risk', '']:
+    if sentiment_base.capitalize() not in ['Rating', 'Reviews', 'Momentum', 'Low_risk', '']:
         raise ValueError('Param sentiment_base must be either "rating" or "review" or "momentum" or "low_risk" or an empty string.')
     if type(multi_factor) is not str:
         raise TypeError('Param multi_factor must be of a type str.')
@@ -74,7 +74,7 @@ def cut_data(datasets, sentiment_base, multi_factor):
     )
     if sentiment_base in ['Momentum', 'low_risk']: # just to ensure we have same number of periods (not nice but needed)
         min_dim-=3
-    elif '3M_Diff' not in multi_factor:
+    elif (multi_factor != '') and ('3M_Diff' not in multi_factor):
         min_dim-=3
     
     return {key: dataset.iloc[:, -min_dim:] for (key, dataset) in datasets.items()}

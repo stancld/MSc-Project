@@ -1,5 +1,4 @@
 """
-File: 1. DB to CSV.py
 Author: Daniel Stancl
 
 Description: This file contains the script for running various code files
@@ -17,13 +16,10 @@ import pandas as pd
 import django
 from set_django_db import set_django_db
 
-import torch
-from transformers import BertTokenizer, BertForSequenceClassification, BertForQuestionAnswering
-
 # Import own functions/classes
 from DB_to_CSV import DB_to_CSV
 from Filtering import Filter
-from ScoreSentiment_Rating import ScoreSentiment_Rating
+from ScoreSentiment import ScoreSentiment
 
 # parameters/arguments
 parser = ArgumentParser()
@@ -37,19 +33,19 @@ parser.add_argument(
 
 parser.add_argument(
     '--company_path',
-    default='/mnt/c/Data/UCL/@MSc Project - Data and Sources/companies.csv',
-    help='An absolute path of an ouptut CSV files containing companies.'
+    default='/mnt/c/Data/UCL/@MSc Project - Data and Sources/Sentiment results/New/source/companies.csv',
+    help='An absolute path of an ouptut CSV files containing companies. Possibly input file if DB_to_CSV is not run.'
 )
 
 parser.add_argument(
     '--review_path',
-    default='/mnt/c/Data/UCL/@MSc Project - Data and Sources/reviews.csv',
-    help='An absolute path of an ouptut CSV files containing reviews.'
+    default='/mnt/c/Data/UCL/@MSc Project - Data and Sources/Sentiment results/New/source/reviews.csv',
+    help='An absolute path of an ouptut CSV files containing reviews. Possibly input file if DB_to_CSV is not run.'
 )
 
 parser.add_argument(
     '--sentiment_path',
-    default='/mnt/c/Data/UCL/@MSc Project - Data and Sources/Sentiment results/',
+    default='/mnt/c/Data/UCL/@MSc Project - Data and Sources/Sentiment results/New/',
     help='An absolute path of an ouptut CSV files containing sentiment results.'
 )
 
@@ -84,6 +80,18 @@ parser.add_argument(
     help='Indication whether difference should be computed.'
 )
 
+parser.add_argument(
+    '-W', '--weighted',
+    action='store_true',
+    help='Indication whether weighted sentiment score should be computed.'
+)
+
+parser.add_argument(
+    '--db_to_csv',
+    action='store_true',
+    help='Indication whether DB_to_CSV to be run'
+)
+
 args = parser.parse_args()
 
 # change str format of min/max_date to datetime format
@@ -108,22 +116,28 @@ def main():
         print(f'Error {e}\ a.k.a. Invalid mysite_path.')
 
     # 1. Save Djamgo DB records to CSV files.
-    writer = DB_to_CSV(Company, Review)
-    companies, reviews = writer.run(args.company_path, args.review_path, save=True)
-    print('1/4 Done - CSV files were succesfully created.')
+    if args.db_to_csv:
+        writer = DB_to_CSV(Company, Review)
+        companies, reviews = writer.run(args.company_path, args.review_path, save=True)
+    else:
+        companies = pd.read_csv(args.company_path)
+        reviews = pd.read_csv(args.review_path)
+        reviews['Date'] = pd.to_datetime(reviews['Date'])
+
+    print('1/3 Done - CSV files were succesfully created.')
 
     # 2. Filtering - Drop companies with less than 10 reviews in total
-    filtering = Filter(companies, reviews)
-    companies, reviews = filtering.run(args.min_date, args.max_date, args.min_reviews, args.sentiment_path)
-    print('2/4 Done - Filtering was completed.')
+    if args.db_to_csv:
+        filtering = Filter(companies, reviews)
+        companies, reviews = filtering.run(args.min_date, args.max_date, args.min_reviews, args.sentiment_path)
+    print('2/3 Done - Filtering was completed.')
 
-    # 3. Employee sentiment based on ratings
-    scoreSentiment_rating = ScoreSentiment_Rating(companies, reviews)
-    scoreSentiment_rating.run(args.sentiment_path, periods, args.difference)
-    print('3/4 Done - Sentiment was scored based on ratings.')
-
-    # 4. Employee sentiment based on reviews
-    
+    # 3. Employee sentiment
+    scoreSentiment = ScoreSentiment(companies, reviews)
+    for sentiment_base in ['Rating', 'Reviews_Sentiment']:
+        scoreSentiment.run(args.sentiment_path, sentiment_base, periods, args.difference, False)
+    scoreSentiment.run(args.sentiment_path, 'Reviews_Sentiment', periods, args.difference, True)
+    print('3/3 Done - Sentiment was scored.')   
 
 if __name__=='__main__':
     main()

@@ -20,11 +20,11 @@ parser = ArgumentParser()
 
 parser.add_argument(
     '--main_path', help='path to the directory containing results',
-    default='/mnt/c/Data/UCL/@MSc Project - Data and sources/Sentiment results/Portfolios/New'
+    default='/mnt/c/Data/UCL/@MSc Project - Data and sources/Sentiment results/Portfolios/Reviews'
 )
 
 parser.add_argument(
-    '--sentiment_base', help="choose from 'review' or 'rating' or None",
+    '--sentiment_base', help="choose from 'reviews' or 'rating' or None",
     default=''
 )
 

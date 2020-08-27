@@ -58,17 +58,37 @@ class PortfolioConstruction(object):
         elif low_risk:
             self.create_portfolios(low_risk=True)
         else:
-            if self.use_ratings and self.use_shortterm:
-                self.create_portfolios('Rating', '1M')
-            if self.use_ratings and self.use_longterm:
-                self.create_portfolios('Rating', '3M')
-            if self.use_ratings and self.use_shortterm and self.use_diff:
-                self.create_portfolios('Rating', '1M', use_diff=True)
-            if self.use_ratings and self.use_longterm and self.use_diff:
-                self.create_portfolios('Rating', '3M', use_diff=True)
+            if not self.weighted:
+                if self.use_ratings and self.use_shortterm:
+                    self.create_portfolios('Rating', '1M')
+                if self.use_ratings and self.use_longterm:
+                    self.create_portfolios('Rating', '3M')
+                if self.use_ratings and self.use_shortterm and self.use_diff:
+                    self.create_portfolios('Rating', '1M', use_diff=True)
+                if self.use_ratings and self.use_longterm and self.use_diff:
+                    self.create_portfolios('Rating', '3M', use_diff=True)
+                if self.use_reviews and self.use_shortterm:
+                    self.create_portfolios('Reviews', '1M')
+                if self.use_reviews and self.use_longterm:
+                    self.create_portfolios('Reviews', '3M')
+                if self.use_reviews and self.use_shortterm and self.use_diff:
+                    self.create_portfolios('Reviews', '1M', use_diff=True)
+                if self.use_reviews and self.use_longterm and self.use_diff:
+                    self.create_portfolios('Reviews', '3M', use_diff=True)
+            
+            elif self.weighted:
+                if self.use_reviews and self.use_shortterm:
+                    self.create_portfolios('Reviews', '1M', weighted=True)
+                if self.use_reviews and self.use_longterm:
+                    self.create_portfolios('Reviews', '3M', weighted=True)
+                if self.use_reviews and self.use_shortterm and self.use_diff:
+                    self.create_portfolios('Reviews', '1M', use_diff=True, weighted=True)
+                if self.use_reviews and self.use_longterm and self.use_diff:
+                    self.create_portfolios('Reviews', '3M', use_diff=True, weighted=True)
+
 
     
-    def create_portfolios(self, sentiment_base='', creation_period='', use_diff=False, momentum=False, low_risk=False):
+    def create_portfolios(self, sentiment_base='', creation_period='', use_diff=False, weighted=False, momentum=False, low_risk=False):
         self.experiment+=1
         if momentum or low_risk:
             try:
@@ -82,13 +102,24 @@ class PortfolioConstruction(object):
         else:
             try:
                 if use_diff==False:
-                    data_name = [name for name in self.files if (sentiment_base in name) and (creation_period in name) and ('Diff' not in name)][0]
+                    if not weighted:
+                        data_name = [name for name in self.files if (sentiment_base in name) and (creation_period in name) and ('Diff' not in name) and ('Weighted' not in name)][0]
+                        w_name=''
+                    else:
+                        data_name = [name for name in self.files if (sentiment_base in name) and (creation_period in name) and ('Diff' not in name) and ('Weighted' in name)][0]
+                        w_name = 'Weighted'
                     diff=''
                 else:
-                    data_name = [name for name in self.files if (sentiment_base in name) and (creation_period in name) and ('Diff' in name)][0]
-                    diff='_Diff'
+                    if not weighted:
+                        data_name = [name for name in self.files if (sentiment_base in name) and (creation_period in name) and ('Diff' in name) and ('Weighted' not in name)][0]
+                        w_name = ''
+                    else:
+                        data_name = [name for name in self.files if (sentiment_base in name) and (creation_period in name) and ('Diff' in name) and ('Weighted' in name)][0]
+                        w_name = 'Weighted'
+                        
                 data = self.datasets[data_name]
             except:
+                print(self.files, data_name)
                 raise FileNotFoundError(f'{data_name} does not exist.')
 
         # replace inf with nan, drop columns with NA
@@ -122,8 +153,8 @@ class PortfolioConstruction(object):
             [self.save_other_portfolio(portfolio, data.columns, pname, base) for portfolio, pname in zip([LONGS, SHORTS], ['LONGS', 'SHORTS'])]
             [self.save_other_portfolio_returns(portfolio, data.columns, pname, base) for portfolio, pname in zip([R_LONGS, R_SHORTS], ['LONGS', 'SHORTS'])]
         else:
-            [self.save_portfolio(portfolio, data.columns, pname, sentiment_base, creation_period, diff) for portfolio, pname in zip([LONGS, SHORTS], ['LONGS', 'SHORTS'])]
-            [self.save_portfolio_returns(portfolio, data.columns, pname, sentiment_base, creation_period, diff) for portfolio, pname in zip([R_LONGS, R_SHORTS], ['LONGS', 'SHORTS'])]   
+            [self.save_portfolio(portfolio, data.columns, pname, sentiment_base, creation_period, diff, w_name) for portfolio, pname in zip([LONGS, SHORTS], ['LONGS', 'SHORTS'])]
+            [self.save_portfolio_returns(portfolio, data.columns, pname, sentiment_base, creation_period, diff, w_name) for portfolio, pname in zip([R_LONGS, R_SHORTS], ['LONGS', 'SHORTS'])]   
             
 
     def load_datasets(self, data_path):
@@ -131,10 +162,10 @@ class PortfolioConstruction(object):
         self.datasets = {f: pd.read_csv(join(data_path, f), index_col=0) for f in self.files}
         return self.datasets
     
-    def save_portfolio(self, portfolio, columns, portfolio_name, sentiment_base, creation_period, diff):
+    def save_portfolio(self, portfolio, columns, portfolio_name, sentiment_base, creation_period, diff, weighted):
         portfolio_df = pd.DataFrame(portfolio).T
         portfolio_df.columns = columns
-        fname = f"{portfolio_name}_{self.market_index}_{sentiment_base}_{creation_period}{diff}.csv"
+        fname = f"{portfolio_name}_{self.market_index}_{sentiment_base}_{creation_period}{diff}{weighted}.csv"
         fpath = join(self.output_path, fname)
         portfolio_df.to_csv(fpath)
     
@@ -145,10 +176,10 @@ class PortfolioConstruction(object):
         fpath = join(self.output_path, fname)
         portfolio_df.to_csv(fpath)
     
-    def save_portfolio_returns(self, portfolio, columns, portfolio_name, sentiment_base, creation_period, diff):
+    def save_portfolio_returns(self, portfolio, columns, portfolio_name, sentiment_base, creation_period, diff, weighted):
         portfolio_df = pd.DataFrame(portfolio).T
         portfolio_df.columns = columns
-        fname = f"RETURNS_{portfolio_name}_{self.market_index}_{sentiment_base}_{creation_period}{diff}.csv"
+        fname = f"RETURNS_{portfolio_name}_{self.market_index}_{sentiment_base}_{creation_period}{diff}{weighted}.csv"
         fpath = join(self.output_path, fname)
         portfolio_df.to_csv(fpath)
 
@@ -303,5 +334,4 @@ class PortfolioConstruction(object):
         self.use_shortterm = (True if kwargs['short_term']==True else False)
         self.use_longterm = (True if kwargs['long_term']==True else False)
         self.use_diff = (True if kwargs['diff']==True else False)
-
-
+        self.weighted = (True if kwargs['weighted'] else False)
