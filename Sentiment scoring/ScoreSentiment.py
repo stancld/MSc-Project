@@ -162,7 +162,7 @@ class ScoreSentiment(object):
             sentiment_diff = self._sentimentDifference(
                 data=rollingSentiment
             )
-            fname = f"{sentiment_path}Sentiment_{self.base_to_name[sentiment_base]}_Diff_{period}M.csv"
+            fname = f"{sentiment_path}Sentiment_{self.base_to_name[sentiment_base]}{w_name}_Diff_{period}M.csv"
             sentiment_diff.to_csv(fname)
 
         if _return:

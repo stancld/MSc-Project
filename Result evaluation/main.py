@@ -20,12 +20,17 @@ parser = ArgumentParser()
 
 parser.add_argument(
     '--main_path', help='path to the directory containing results',
-    default='/mnt/c/Data/UCL/@MSc Project - Data and sources/Sentiment results/Portfolios/Reviews'
+    default='/mnt/c/Data/UCL/@MSc Project - Data and sources/Sentiment results/Portfolios/New'
 )
 
 parser.add_argument(
     '--sentiment_base', help="choose from 'reviews' or 'rating' or None",
     default=''
+)
+
+parser.add_argument(
+    '-W', '--weighted', help="use weighted reviews as sentiment_base",
+    action='store_true'
 )
 
 parser.add_argument(
@@ -49,7 +54,12 @@ args = parser.parse_args()
 ### APPLICATION ###
 ###################
 def main():
-    datasets = load_data(args.main_path, args.sentiment_base, args.multi_factor, args.multi_factor_full)
+    if args.weighted:
+        w_name = '_Weighted'
+    else:
+        w_name = ''
+
+    datasets = load_data(args.main_path, args.sentiment_base, args.weighted, args.multi_factor, args.multi_factor_full)
     returns = {
         key: compute_returns(data, key) for (key, data) in datasets.items() 
     }
@@ -57,7 +67,9 @@ def main():
         args.sentiment_base = args.multi_factor
         if args.multi_factor_full:
             args.sentiment_base += '_full'
-    pd.DataFrame(returns).to_excel(join(args.main_path, f'results_{args.sentiment_base}.xlsx'))
+    
+
+    pd.DataFrame(returns).to_excel(join(args.main_path, f'results_{args.sentiment_base}{w_name}.xlsx'))
     
     if args.concatenate:
         datasets_concatenated = concatenate_longs_and_shorts(datasets)
@@ -68,7 +80,7 @@ def main():
             args.sentiment_base = args.multi_factor
             if args.multi_factor_full:
                 args.sentiment_base += 'full'
-        pd.DataFrame(returns_concatenated).to_excel(join(args.main_path, f'results_concat_{args.sentiment_base}.xlsx'))
+        pd.DataFrame(returns_concatenated).to_excel(join(args.main_path, f'results_concat_{args.sentiment_base}{w_name}.xlsx'))
 
 if __name__=='__main__':
     main()

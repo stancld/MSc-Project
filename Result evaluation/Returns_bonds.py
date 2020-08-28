@@ -18,7 +18,7 @@ import pandas as pd
 
 
 ## data loader
-def load_data(main_path, sentiment_base='', multi_factor = '', multi_factor_full = False):
+def load_data(main_path, sentiment_base='', weighted = False, multi_factor = '', multi_factor_full = False):
     """
     :param sentiment base: choose from 'review' or 'rating' or None
     :param main_path: path to the directory containing results
@@ -39,7 +39,10 @@ def load_data(main_path, sentiment_base='', multi_factor = '', multi_factor_full
     if sentiment_base == 'low_risk':
         files_selected = [f for f in files if ('low_risk' in f) and ('RETURNS' in f)]
     elif sentiment_base != '':
-        files_selected = [f for f in files if (sentiment_base.capitalize() in f) and ('RETURNS' in f)]
+        if not weighted:
+            files_selected = [f for f in files if (sentiment_base.capitalize() in f) and ('RETURNS' in f)]
+        elif weighted:
+            files_selected = [f for f in files if (sentiment_base.capitalize() in f) and ('RETURNS' in f) and ('Weighted' in f)]
     else:
         if multi_factor == '':
             raise ValueError('Either sentiment_base or multi_factor arg must be specified.')
@@ -49,6 +52,7 @@ def load_data(main_path, sentiment_base='', multi_factor = '', multi_factor_full
     
     datasets = {f: pd.read_csv(join(main_path, f), index_col=0) for f in files_selected}
     datasets_n = cut_data(datasets, sentiment_base, multi_factor)
+    
     if multi_factor != '': # join datasets
         if not multi_factor_full:
             div = len(multi_factor.split('|'))

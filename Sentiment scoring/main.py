@@ -134,8 +134,8 @@ def main():
 
     # 3. Employee sentiment
     scoreSentiment = ScoreSentiment(companies, reviews)
-    for sentiment_base in ['Rating', 'Reviews_Sentiment']:
-        scoreSentiment.run(args.sentiment_path, sentiment_base, periods, args.difference, False)
+    #for sentiment_base in ['Rating', 'Reviews_Sentiment']:
+    #    scoreSentiment.run(args.sentiment_path, sentiment_base, periods, args.difference, False)
     scoreSentiment.run(args.sentiment_path, 'Reviews_Sentiment', periods, args.difference, True)
     print('3/3 Done - Sentiment was scored.')   
 

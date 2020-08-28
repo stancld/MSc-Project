@@ -15,7 +15,7 @@ output_path = '/mnt/c/Data/UCL/@MSc Project - Data and sources/Sentiment results
 kwargs = {
     'ratings': False,
     'reviews': True,
-    'short_term': True,
+    'short_term': False,
     'long_term': True,
     'diff': True,
     'weighted': True  

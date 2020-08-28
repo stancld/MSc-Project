@@ -77,12 +77,12 @@ class PortfolioConstruction(object):
                     self.create_portfolios('Reviews', '3M', use_diff=True)
             
             elif self.weighted:
-                if self.use_reviews and self.use_shortterm:
-                    self.create_portfolios('Reviews', '1M', weighted=True)
-                if self.use_reviews and self.use_longterm:
-                    self.create_portfolios('Reviews', '3M', weighted=True)
-                if self.use_reviews and self.use_shortterm and self.use_diff:
-                    self.create_portfolios('Reviews', '1M', use_diff=True, weighted=True)
+                #if self.use_reviews and self.use_shortterm:
+                #    self.create_portfolios('Reviews', '1M', weighted=True)
+                #if self.use_reviews and self.use_longterm:
+                #    self.create_portfolios('Reviews', '3M', weighted=True)
+                #if self.use_reviews and self.use_shortterm and self.use_diff:
+                #    self.create_portfolios('Reviews', '1M', use_diff=True, weighted=True)
                 if self.use_reviews and self.use_longterm and self.use_diff:
                     self.create_portfolios('Reviews', '3M', use_diff=True, weighted=True)
 
@@ -97,7 +97,7 @@ class PortfolioConstruction(object):
                 data_name = [name for name in self.files if (sentiment_base in name) and (creation_period in name) and ('Diff' not in name)][0]
                 data = self.datasets[data_name]
             except:
-                raise FileNotFoundError(f'{data_name} does not exist.')
+                raise FileNotFoundError('File does not exist')
         
         else:
             try:
@@ -116,11 +116,11 @@ class PortfolioConstruction(object):
                     else:
                         data_name = [name for name in self.files if (sentiment_base in name) and (creation_period in name) and ('Diff' in name) and ('Weighted' in name)][0]
                         w_name = 'Weighted'
+                    diff='_Diff'
                         
                 data = self.datasets[data_name]
             except:
-                print(self.files, data_name)
-                raise FileNotFoundError(f'{data_name} does not exist.')
+                raise FileNotFoundError('File does not exist')
 
         # replace inf with nan, drop columns with NA
         data.replace(np.inf, np.nan, inplace=True)
