@@ -3,7 +3,7 @@ django==3.1.13
 numpy
 pandas
 pytorch-ligthning==0.8.5
-requests==2.23.0
+requests==2.31.0
 selenium==3.141.0
 tensorboard==2.3.0
 torch==1.6.0
